@@ -1434,7 +1434,20 @@
         };
     </script>
 <p>
-  <a href="basketball-chaos-game/">🏀 Basketball Chaos Game</a>
+  <a href="basketball-chaos-game/#projects">🏀 Basketball Chaos Game</a>
 </p>
+    <script>
+  window.addEventListener('DOMContentLoaded', () => {
+    if (window.location.hash === '#projects') {
+      const projectsSection = document.getElementById('projects');
+      if (projectsSection) {
+        projectsSection.scrollIntoView({ behavior: 'smooth' });
+      }
+      if (typeof openGameModal === 'function') {
+        openGameModal();
+      }
+    }
+  });
+</script>
 </body>
 </html>
