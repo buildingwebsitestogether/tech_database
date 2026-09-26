@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sam's DevHub - Building With AI Portfolio</title>
+    <title>Sam's DevHub - Building With AI Portfolio & MYPLAYER Hoops</title>
 
-    <!-- Favicon (Basketball Vector Icon) -->
+    <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2246%22 fill=%22%23ea580c%22 stroke=%22%23111827%22 stroke-width=%224%22/><path d=%22M 4,50 H 96 M 50,4 V 96 M 16,16 C 36,36 36,64 16,84 M 84,16 C 64,36 64,64 84,84%22 fill=%22none%22 stroke=%22%23111827%22 stroke-width=%225%22 stroke-linecap=%22round%22/></svg>">
 
     <!-- Tailwind CSS -->
@@ -15,7 +15,7 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,600;0,700;1,700&family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Russo+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,600;0,700;1,700&family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Russo+One&family=Teko:wght@600;700&display=swap" rel="stylesheet">
     
     <script>
         tailwind.config = {
@@ -40,7 +40,8 @@
                         sans: ['Inter', 'sans-serif'],
                         mono: ['Fira Code', 'monospace'],
                         arcade: ['Russo One', 'sans-serif'],
-                        tech: ['Chakra Petch', 'sans-serif']
+                        tech: ['Chakra Petch', 'sans-serif'],
+                        teko: ['Teko', 'sans-serif']
                     }
                 }
             }
@@ -51,7 +52,7 @@
         body { font-family: 'Inter', sans-serif; user-select: none; }
         
         .glass-panel {
-            background: rgba(17, 24, 39, 0.75);
+            background: rgba(17, 24, 39, 0.85);
             backdrop-filter: blur(14px);
             -webkit-backdrop-filter: blur(14px);
             border: 1px solid rgba(255, 255, 255, 0.08);
@@ -83,14 +84,37 @@
             background-size: 100% 100%, 30px 30px, 30px 30px;
         }
 
-        .game-canvas-container {
-            touch-action: none;
+        /* Card Themes */
+        .card-container { perspective: 1000px; }
+        .hoop-card {
+            background: linear-gradient(135deg, #121826 0%, #1e293b 50%, #0f172a 100%);
+            border: 2px solid rgba(255, 215, 0, 0.4);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), inset 0 0 15px rgba(255, 215, 0, 0.15);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+        }
+        .hoop-card:hover {
+            transform: translateY(-6px) rotateX(2deg) rotateY(-2deg);
+        }
+        .hoop-card.theme-gold {
+            background: linear-gradient(135deg, #2c1d03 0%, #785209 50%, #1a1202 100%);
+            border: 2px solid #facc15;
+            box-shadow: 0 0 25px rgba(250, 204, 21, 0.35), inset 0 0 15px rgba(250, 204, 21, 0.2);
+        }
+        .hoop-card.theme-diamond {
+            background: linear-gradient(135deg, #09203f 0%, #537895 100%);
+            border: 2px solid #00f2fe;
+            box-shadow: 0 0 25px rgba(0, 242, 254, 0.35), inset 0 0 15px rgba(0, 242, 254, 0.2);
+        }
+        .hoop-card.theme-obsidian {
+            background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #020617 100%);
+            border: 2px solid #38bdf8;
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.3);
         }
     </style>
 </head>
 <body class="bg-darkbg text-slate-100 min-h-screen relative overflow-x-hidden selection:bg-brand-500 selection:text-white transition-colors duration-300">
 
-    <!-- Ambient Lighting Backdrop -->
+    <!-- Ambient Lighting Background -->
     <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <canvas id="bgCanvas" class="w-full h-full opacity-40"></canvas>
         <div class="absolute -top-40 -left-40 w-96 h-96 bg-brand-500/20 rounded-full animate-glow pointer-events-none"></div>
@@ -101,7 +125,7 @@
     <header class="sticky top-0 z-40 w-full glass-panel border-b border-slate-800/80 transition-all duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16 sm:h-20">
-                <!-- Logo / Homepage Link -->
+                <!-- Logo -->
                 <a href="#" class="flex items-center gap-3 group" title="Return to Homepage">
                     <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-purple-600 to-pink-500 p-[2px] transition-transform group-hover:scale-105 shadow-md">
                         <div class="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
@@ -114,22 +138,20 @@
                     </div>
                 </a>
 
-                <!-- Nav Links -->
+                <!-- Desktop Nav -->
                 <nav class="hidden md:flex items-center space-x-1 lg:space-x-2 text-sm font-medium">
                     <a href="#" class="px-3 py-2 rounded-lg text-white font-semibold hover:bg-slate-800/50 transition-all">Home</a>
                     <a href="#about" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all">About Me</a>
                     <a href="#projects" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all">My Creations</a>
-                    <a href="#skills" class="px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800/50 transition-all">Tech Stack</a>
-                    <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="px-3 py-2 rounded-lg text-purple-400 hover:text-purple-300 hover:bg-slate-800/50 transition-all flex items-center gap-1.5">
-                        <i class="fa-brands fa-github"></i> Repository
-                    </a>
+                    <button onclick="openMyPlayerModal()" class="px-3 py-2 rounded-lg text-amber-400 hover:text-amber-300 hover:bg-slate-800/50 transition-all flex items-center gap-1.5"><i class="fa-solid fa-id-card"></i> MYPLAYER Hoops</button>
+                    <button onclick="openGameModal()" class="px-3 py-2 rounded-lg text-orange-400 hover:text-orange-300 hover:bg-slate-800/50 transition-all flex items-center gap-1.5"><i class="fa-solid fa-basketball"></i> Arcade Game</button>
                 </nav>
 
-                <!-- Action Buttons -->
+                <!-- Actions -->
                 <div class="flex items-center gap-2 sm:gap-3">
                     <button id="navPlayGameBtn" class="px-3 py-2 text-xs sm:text-sm font-bold rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 hover:from-orange-400 hover:to-amber-400 shadow-lg shadow-orange-500/20 transition-all transform hover:-translate-y-0.5 flex items-center gap-2">
                         <span>🏀</span>
-                        <span class="hidden sm:inline">Play Basketball Chaos</span>
+                        <span class="hidden sm:inline">Play Arcade</span>
                     </button>
                     <button id="addProjectBtn" class="px-3 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-slate-800/90 hover:bg-slate-700 text-white border border-slate-700/80 transition-all flex items-center gap-2">
                         <i class="fa-solid fa-plus text-xs"></i>
@@ -147,12 +169,13 @@
             </div>
         </div>
 
+        <!-- Mobile Nav Menu -->
         <div id="mobileMenu" class="hidden md:hidden border-t border-slate-800 bg-slate-950/95 px-4 pt-3 pb-4 space-y-2">
             <a href="#" class="mobile-nav-link block px-3 py-2 rounded-lg text-white font-semibold hover:bg-slate-800">Home</a>
             <a href="#about" class="mobile-nav-link block px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800">About Me</a>
             <a href="#projects" class="mobile-nav-link block px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800">My Creations</a>
-            <a href="#skills" class="mobile-nav-link block px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800">Tech Stack</a>
-            <a href="https://github.com" target="_blank" class="mobile-nav-link block px-3 py-2 rounded-lg text-purple-400 hover:bg-slate-800"><i class="fa-brands fa-github"></i> Repository</a>
+            <button onclick="openMyPlayerModal(); document.getElementById('mobileMenu').classList.add('hidden');" class="w-full text-left mobile-nav-link block px-3 py-2 rounded-lg text-amber-400 hover:bg-slate-800">MYPLAYER Hoops</button>
+            <button onclick="openGameModal(); document.getElementById('mobileMenu').classList.add('hidden');" class="w-full text-left mobile-nav-link block px-3 py-2 rounded-lg text-orange-400 hover:bg-slate-800">Arcade Game</button>
         </div>
     </header>
 
@@ -188,16 +211,16 @@
 
                     <div class="grid grid-cols-3 gap-4 pt-8 border-t border-slate-800/80 max-w-lg mx-auto lg:mx-0">
                         <div>
-                            <div class="text-2xl sm:text-3xl font-bold text-white font-mono" id="statProjectCount">0</div>
+                            <div class="text-2xl sm:text-3xl font-bold text-white font-mono" id="statProjectCount">3</div>
                             <div class="text-xs text-slate-400">Built Projects</div>
                         </div>
                         <div>
-                            <div class="text-2xl sm:text-3xl font-bold text-white font-mono" id="statCategories">0</div>
+                            <div class="text-2xl sm:text-3xl font-bold text-white font-mono" id="statCategories">3</div>
                             <div class="text-xs text-slate-400">Categories</div>
                         </div>
                         <div>
                             <div class="text-2xl sm:text-3xl font-bold text-amber-400 font-mono" id="statHighScore">0</div>
-                            <div class="text-xs text-slate-400">Basketball High Score</div>
+                            <div class="text-xs text-slate-400">Hoops High Score</div>
                         </div>
                     </div>
                 </div>
@@ -217,14 +240,14 @@
                             <div class="p-5 space-y-2 text-slate-300 overflow-x-auto">
                                 <p><span class="text-purple-400">const</span> <span class="text-blue-400">profile</span> = {</p>
                                 <p class="pl-4"><span class="text-slate-400">name:</span> <span class="text-emerald-300">'Sam'</span>,</p>
-                                <p class="pl-4"><span class="text-slate-400">role:</span> <span class="text-brand-400">'Student @ Building With AI (Mr. Smith)'</span>,</p>
+                                <p class="pl-4"><span class="text-slate-400">role:</span> <span class="text-brand-400">'Student @ Building With AI'</span>,</p>
                                 <p class="pl-4"><span class="text-slate-400">featuredGame:</span> <span class="text-amber-300">'Basketball Chaos Arcade'</span>,</p>
                                 <p class="pl-4"><span class="text-slate-400">interests:</span> [<span class="text-emerald-300">'Basketball'</span>, <span class="text-emerald-300">'Reading'</span>, <span class="text-emerald-300">'Coding'</span>],</p>
                                 <p class="pl-4"><span class="text-slate-400">status:</span> <span class="text-emerald-400">'Building with AI & Balling 🏀'</span></p>
                                 <p>};</p>
                                 <div class="pt-3 border-t border-slate-800 flex justify-between items-center text-xs">
                                     <span class="text-slate-400">Test ball physics engine:</span>
-                                    <button id="heroQuickPlay" class="px-3 py-1 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-lg hover:bg-orange-500 hover:text-white transition-all font-semibold">Launch Game</button>
+                                    <button onclick="openGameModal()" class="px-3 py-1 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-lg hover:bg-orange-500 hover:text-white transition-all font-semibold">Launch Game</button>
                                 </div>
                             </div>
                         </div>
@@ -255,9 +278,9 @@
                     </h3>
                     <ul class="space-y-2 text-xs sm:text-sm text-slate-300">
                         <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> Realistic trajectory aiming arc with adjustable power vectors</li>
-                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> Pure Web Audio API SFX (Swish, Bounce, Rim Clang, Coin pickup)</li>
-                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> Full browser Back-button navigation support & offline download</li>
-                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> In-game Chaos Shop with Fireball skin & extended guides</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> Pure Web Audio API SFX (Swish, Bounce, Rim Clang)</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> Dynamic MYPLAYER Scouting Cards with 5-Axis Attribute Radar</li>
+                        <li class="flex items-center gap-2"><i class="fa-solid fa-check text-emerald-400"></i> Local Storage roster syncing and filterable leaderboard</li>
                     </ul>
                 </div>
             </div>
@@ -283,9 +306,6 @@
                         <button id="viewGridBtn" class="p-2 rounded-lg bg-slate-800 text-brand-400" title="Grid View"><i class="fa-solid fa-grip"></i></button>
                         <button id="viewListBtn" class="p-2 rounded-lg text-slate-400 hover:text-white" title="List View"><i class="fa-solid fa-list"></i></button>
                     </div>
-                    <button id="exportDataBtn" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-medium" title="Export Config JSON">
-                        <i class="fa-solid fa-download"></i>
-                    </button>
                 </div>
             </div>
 
@@ -300,877 +320,588 @@
             </div>
         </section>
 
-        <!-- Skills Section -->
+        <!-- MYPLAYER HOOPS MODAL OVERLAY -->
+        <div id="myplayerModal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md hidden flex items-center justify-center p-3 sm:p-6 overflow-y-auto transition-all duration-300">
+            <div id="myplayerSection" class="relative w-full max-w-6xl glass-panel rounded-3xl border-2 border-amber-500/40 p-4 sm:p-8 shadow-2xl overflow-y-auto max-h-[92vh] my-auto">
+                <!-- Modal Close Button -->
+                <button id="closeMyPlayerModalBtn" onclick="closeMyPlayerModal()" class="absolute top-4 right-4 z-30 w-10 h-10 rounded-full bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 flex items-center justify-center transition-all shadow-lg" title="Close MYPLAYER Hoops">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+
+                <div class="mb-6 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800 pb-5 pr-10">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-400 p-0.5 shadow-lg shadow-orange-500/30">
+                            <div class="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
+                                <i class="fa-solid fa-basketball text-orange-500 text-2xl"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <h2 class="font-teko text-4xl leading-none font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-300 to-yellow-500">MYPLAYER HOOPS CARD STUDIO</h2>
+                            <p class="text-xs text-slate-400 font-semibold tracking-widest uppercase">Interactive Scouting Card Creator & 5-Axis Attribute Radar System</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+                        <span class="text-xs font-bold text-slate-300">Hub Storage Active</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                    <!-- Creator Form -->
+                    <div class="lg:col-span-7 glass-panel rounded-3xl p-5 sm:p-6 border border-slate-800 space-y-5 shadow-2xl">
+                        <div class="border-b border-slate-800 pb-3 flex justify-between items-center">
+                            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-id-card text-orange-500"></i> Scouting Player Card Form
+                            </h3>
+                            <button type="button" id="resetCardFormBtn" class="text-xs text-slate-400 hover:text-white transition">
+                                <i class="fa-solid fa-rotate-right mr-1"></i> Reset Form
+                            </button>
+                        </div>
+
+                        <form id="card-form" class="space-y-4">
+                            <input type="hidden" id="card-id" value="">
+                            
+                            <!-- Row 1: Player Name & Nickname -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-300 mb-1">Player Name</label>
+                                    <input type="text" id="input-name" value="Shai Gilgeous-Alexander" placeholder="e.g., Shai Gilgeous-Alexander" required
+                                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 transition">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-300 mb-1">Nickname (Optional)</label>
+                                    <input type="text" id="input-nickname" value="SGA" placeholder="e.g., SGA"
+                                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 transition">
+                                </div>
+                            </div>
+
+                            <!-- Row 2: Team & Category Dropdown -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-300 mb-1">Team / Club Name</label>
+                                    <input type="text" id="input-team" value="OKC Thunder" placeholder="e.g., OKC Thunder" required
+                                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 transition">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-300 mb-1">Category Classification</label>
+                                    <select id="input-category" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-orange-500">
+                                        <option value="Club & Country" selected>Club & Country</option>
+                                        <option value="FIBA National Team Only">FIBA National Team Only</option>
+                                        <option value="Only Club">Only Club</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Row 3: Country Flag & Role/Archetype -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-300 mb-1">National Team Selector (FIBA)</label>
+                                    <select id="input-country" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-orange-500">
+                                        <option value="CAN|🇨🇦" selected>Canada 🇨🇦</option>
+                                        <option value="USA|🇺🇸">USA 🇺🇸</option>
+                                        <option value="GER|🇩🇪">Germany 🇩🇪</option>
+                                        <option value="FRA|🇫🇷">France 🇫🇷</option>
+                                        <option value="SRB|🇷🇸">Serbia 🇷🇸</option>
+                                        <option value="ESP|🇪🇸">Spain 🇪🇸</option>
+                                        <option value="AUS|🇦🇺">Australia 🇦🇺</option>
+                                        <option value="SLO|🇸🇮">Slovenia 🇸🇮</option>
+                                        <option value="GRE|🇬🇷">Greece 🇬🇷</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-300 mb-1">Role / Archetype</label>
+                                    <select id="input-role" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-orange-500">
+                                        <option value="Point Guard" selected>Point Guard (PG)</option>
+                                        <option value="Shooting Guard">Shooting Guard (SG)</option>
+                                        <option value="Small Forward">Small Forward (SF)</option>
+                                        <option value="Power Forward">Power Forward (PF)</option>
+                                        <option value="Center">Center (C)</option>
+                                        <option value="3&D Specialist">3&D Specialist</option>
+                                        <option value="Playmaker">Playmaker</option>
+                                        <option value="Slasher">Slasher</option>
+                                        <option value="Pure Shooter">Pure Shooter</option>
+                                        <option value="Lockdown Defender">Lockdown Defender</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Row 4: Season Year, Rating Slider & Evaluator -->
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-300 mb-1">Season Year</label>
+                                    <input type="number" id="input-year" value="2026" min="1950" max="2027" required
+                                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500">
+                                </div>
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label class="block text-xs font-bold text-slate-300">Overall Rating (OVR)</label>
+                                        <span id="ovrValueBadge" class="text-xs font-mono font-bold text-amber-400">96</span>
+                                    </div>
+                                    <input type="range" id="input-rating" min="50" max="99" value="96"
+                                        class="w-full accent-amber-500 cursor-pointer h-2 bg-slate-900 rounded-lg">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-300 mb-1">Evaluator Name</label>
+                                    <input type="text" id="input-evaluator" value="Sam (Scout)" placeholder="e.g., Coach Smith" required
+                                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-orange-500">
+                                </div>
+                            </div>
+
+                            <!-- 5-Axis Attribute Radar Sliders -->
+                            <div class="bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 space-y-2.5">
+                                <div class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center justify-between">
+                                    <span><i class="fa-solid fa-chart-pie mr-1"></i> 5-Axis Attribute Ratings</span>
+                                    <span class="text-[10px] text-slate-400 font-normal">Updates SVG Radar Chart</span>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                                    <div>
+                                        <div class="flex justify-between text-[11px] text-slate-300 mb-0.5">
+                                            <span>Inside Scoring (INS)</span>
+                                            <span id="val-ins" class="font-mono text-amber-400 font-bold">92</span>
+                                        </div>
+                                        <input type="range" id="attr-ins" min="30" max="99" value="92" class="w-full accent-orange-500 h-1.5 bg-slate-900 rounded">
+                                    </div>
+
+                                    <div>
+                                        <div class="flex justify-between text-[11px] text-slate-300 mb-0.5">
+                                            <span>Outside Shooting (OUT)</span>
+                                            <span id="val-out" class="font-mono text-amber-400 font-bold">95</span>
+                                        </div>
+                                        <input type="range" id="attr-out" min="30" max="99" value="95" class="w-full accent-orange-500 h-1.5 bg-slate-900 rounded">
+                                    </div>
+
+                                    <div>
+                                        <div class="flex justify-between text-[11px] text-slate-300 mb-0.5">
+                                            <span>Playmaking (PLY)</span>
+                                            <span id="val-ply" class="font-mono text-amber-400 font-bold">98</span>
+                                        </div>
+                                        <input type="range" id="attr-ply" min="30" max="99" value="98" class="w-full accent-orange-500 h-1.5 bg-slate-900 rounded">
+                                    </div>
+
+                                    <div>
+                                        <div class="flex justify-between text-[11px] text-slate-300 mb-0.5">
+                                            <span>Defense (DEF)</span>
+                                            <span id="val-def" class="font-mono text-amber-400 font-bold">88</span>
+                                        </div>
+                                        <input type="range" id="attr-def" min="30" max="99" value="88" class="w-full accent-orange-500 h-1.5 bg-slate-900 rounded">
+                                    </div>
+
+                                    <div class="sm:col-span-2">
+                                        <div class="flex justify-between text-[11px] text-slate-300 mb-0.5">
+                                            <span>Athleticism (ATH)</span>
+                                            <span id="val-ath" class="font-mono text-amber-400 font-bold">94</span>
+                                        </div>
+                                        <input type="range" id="attr-ath" min="30" max="99" value="94" class="w-full accent-orange-500 h-1.5 bg-slate-900 rounded">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Scouting Notes -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-300 mb-1">Scouting Notes & Breakdown</label>
+                                <textarea id="input-notes" rows="2" placeholder="Elite handle, quick pull-up jumper, clutch scoring breakdown..."
+                                    class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 transition"></textarea>
+                            </div>
+
+                            <div class="pt-1 flex gap-3">
+                                <button type="submit" class="flex-1 py-3 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-slate-950 font-extrabold rounded-xl shadow-lg shadow-orange-500/20 text-xs sm:text-sm uppercase tracking-wider transition-all">
+                                    <i class="fa-solid fa-save mr-1"></i> Save to Scouting Roster
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Live Card Preview Container -->
+                    <div class="lg:col-span-5 space-y-4">
+                        <div class="text-xs font-bold uppercase tracking-wider text-slate-400 text-center lg:text-left flex items-center justify-center lg:justify-start gap-2">
+                            <i class="fa-solid fa-eye text-amber-400"></i> Live Card Preview & SVG Radar
+                        </div>
+
+                        <div class="card-container flex justify-center">
+                            <div id="liveCardPreview" class="hoop-card theme-obsidian w-full max-w-sm rounded-3xl p-5 relative overflow-hidden text-white font-sans border-2">
+                                <!-- Card Top Header -->
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <div id="previewRating" class="font-teko text-5xl font-extrabold leading-none text-amber-300">96</div>
+                                        <div id="previewRole" class="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-200">POINT GUARD</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div id="previewFlag" class="text-3xl">🇨🇦</div>
+                                        <span id="previewCategoryBadge" class="inline-block mt-1 px-2 py-0.5 rounded bg-slate-950/80 text-[9px] font-mono font-bold text-amber-300 border border-amber-500/30">
+                                            Club & Country
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Card Center Info & Avatar -->
+                                <div class="my-4 text-center py-3 bg-slate-950/50 rounded-2xl border border-white/10 backdrop-blur-sm">
+                                    <div id="previewAvatar" class="text-5xl mb-1">🏀</div>
+                                    <h4 id="previewName" class="font-arcade text-lg tracking-wide uppercase text-white truncate px-2">Shai Gilgeous-Alexander</h4>
+                                    <div id="previewNickname" class="text-xs text-amber-300 font-mono">"SGA"</div>
+                                    <div id="previewTeam" class="text-xs text-slate-300 font-bold mt-0.5">OKC Thunder</div>
+                                </div>
+
+                                <!-- SVG Dynamic 5-Axis Radar Chart Container -->
+                                <div class="my-3 bg-slate-950/60 p-2 rounded-2xl border border-white/10 flex flex-col items-center justify-center">
+                                    <div class="text-[10px] font-mono uppercase tracking-widest text-slate-400 mb-1">Attribute Radar</div>
+                                    <div id="radarContainer" class="w-full flex justify-center">
+                                        <!-- Dynamic SVG Radar Chart Rendered Here -->
+                                    </div>
+                                </div>
+
+                                <!-- Card Footer Meta -->
+                                <div class="flex justify-between items-end text-[10px] border-t border-white/10 pt-3 text-slate-300">
+                                    <div>
+                                        <div class="text-slate-400 font-mono">Evaluator</div>
+                                        <div id="previewEvaluator" class="font-bold text-amber-300">Sam (Scout)</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-slate-400 font-mono">Season</div>
+                                        <div id="previewYear" class="font-bold text-white font-mono text-xs">2026</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scouting Leaderboard Section -->
+                <div class="mt-10 glass-panel rounded-3xl p-5 sm:p-6 border border-slate-800">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 pb-4 border-b border-slate-800">
+                        <div>
+                            <h3 class="text-base font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-list-ol text-amber-400"></i> Player Scouting Roster Leaderboard
+                            </h3>
+                            <p class="text-xs text-slate-400">Filter, search, duplicate, or edit scouting cards stored in your local hub.</p>
+                        </div>
+                        <div class="text-xs text-slate-400 font-mono">
+                            Total Players: <span id="savedCardCount" class="text-amber-400 font-bold">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Search, Category Filter & Sort Options -->
+                    <div class="flex flex-col sm:flex-row gap-3 mb-5">
+                        <div class="relative flex-1">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                            <input type="text" id="rosterSearchInput" placeholder="Search by player, team, evaluator..."
+                                class="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500">
+                        </div>
+
+                        <select id="rosterCategoryFilter" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
+                            <option value="All">All Categories</option>
+                            <option value="Club & Country">Club & Country</option>
+                            <option value="FIBA National Team Only">FIBA National Team Only</option>
+                            <option value="Only Club">Only Club</option>
+                        </select>
+
+                        <select id="rosterSortOption" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500">
+                            <option value="rating-desc">Sort: Rating (High → Low)</option>
+                            <option value="rating-asc">Sort: Rating (Low → High)</option>
+                            <option value="name-asc">Sort: Name (A → Z)</option>
+                            <option value="year-desc">Sort: Season Year</option>
+                        </select>
+                    </div>
+
+                    <!-- Roster Table -->
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-900/80 text-slate-400 font-mono uppercase text-[10px]">
+                                <tr>
+                                    <th class="p-3 rounded-l-xl">Player</th>
+                                    <th class="p-3">Team / Category</th>
+                                    <th class="p-3">Role</th>
+                                    <th class="p-3">OVR</th>
+                                    <th class="p-3">Evaluator</th>
+                                    <th class="p-3 text-right rounded-r-xl">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rosterTableBody" class="divide-y divide-slate-800/60 text-slate-300">
+                                <!-- Injected dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BASKETBALL CHAOS ARCADE GAME MODAL -->
+        <div id="gameModal" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md hidden flex items-center justify-center p-3 sm:p-6 overflow-y-auto transition-all duration-300">
+            <div id="gameSection" class="relative w-full max-w-5xl court-bg rounded-3xl border-2 border-orange-500/40 p-4 sm:p-8 shadow-2xl overflow-hidden my-auto">
+                <!-- Modal Close Button -->
+                <button id="closeGameModalBtn" onclick="closeGameModal()" class="absolute top-4 right-4 z-30 w-10 h-10 rounded-full bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 flex items-center justify-center transition-all shadow-lg" title="Close Game">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+
+                <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 pr-10">
+                    <div>
+                        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-mono mb-2">
+                            <span>🎮 ORIGINAL BROWSER ARCADE</span>
+                        </div>
+                        <h2 class="text-2xl sm:text-4xl font-extrabold text-white font-arcade">BASKETBALL CHAOS ARCADE</h2>
+                        <p class="text-xs sm:text-sm text-slate-400">Aim with drag or touch, release to shoot! Score baskets before time runs out!</p>
+                    </div>
+
+                    <div class="flex items-center gap-4 bg-slate-900/90 border border-slate-800 rounded-2xl px-5 py-3">
+                        <div class="text-center">
+                            <div class="text-[10px] text-slate-400 font-mono uppercase">Score</div>
+                            <div id="gameScore" class="text-2xl font-bold font-mono text-amber-400">0</div>
+                        </div>
+                        <div class="w-px h-8 bg-slate-800"></div>
+                        <div class="text-center">
+                            <div class="text-[10px] text-slate-400 font-mono uppercase">Time</div>
+                            <div id="gameTimer" class="text-2xl font-bold font-mono text-emerald-400">45s</div>
+                        </div>
+                        <div class="w-px h-8 bg-slate-800"></div>
+                        <div class="text-center">
+                            <div class="text-[10px] text-slate-400 font-mono uppercase">Streak</div>
+                            <div id="gameStreak" class="text-2xl font-bold font-mono text-orange-400">0x</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Canvas Game Container -->
+                <div class="relative w-full h-[380px] sm:h-[460px] bg-slate-950/80 rounded-2xl border border-slate-800 overflow-hidden game-canvas-container shadow-inner">
+                    <canvas id="hoopsCanvas" class="w-full h-full cursor-crosshair"></canvas>
+
+                    <!-- Game Overlay Start/Game Over -->
+                    <div id="gameOverlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20">
+                        <div class="w-16 h-16 rounded-full bg-orange-500/20 border border-orange-500/50 flex items-center justify-center mb-4 text-3xl">
+                            🏀
+                        </div>
+                        <h3 id="overlayTitle" class="text-2xl sm:text-3xl font-extrabold text-white font-arcade mb-2">READY TO SHOOT HOOPS?</h3>
+                        <p id="overlaySub" class="text-slate-400 text-xs sm:text-sm max-w-md mb-6">Click/Tap & drag back from the basketball to set target trajectory and shot power!</p>
+                        <button id="startGameBtn" class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-slate-950 font-extrabold font-tech uppercase tracking-wider text-base shadow-xl shadow-orange-500/30 transition-all transform hover:scale-105">
+                            Start Game
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Controls & Shop Bar -->
+                <div class="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400 font-mono">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-gamepad text-orange-400"></i> Drag mouse or touch screen to aim and launch.
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button id="soundToggleBtn" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 flex items-center gap-1.5">
+                            <i id="soundIcon" class="fa-solid fa-volume-high text-emerald-400"></i> SFX Audio: On
+                        </button>
+                        <button id="skinToggleBtn" class="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-orange-400 border border-slate-800 flex items-center gap-1.5">
+                            <i class="fa-solid fa-fire"></i> Skin: Classic Ball
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tech Stack Section -->
         <section id="skills" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-slate-800/60">
             <div class="text-center max-w-2xl mx-auto mb-12">
-                <h2 class="text-2xl sm:text-3xl font-bold text-white">Skills & Tech Stack</h2>
-                <p class="text-slate-400 text-sm sm:text-base mt-2">Technologies powering my web applications, physics canvas engines, and audio synthesizers.</p>
+                <h2 class="text-2xl sm:text-3xl font-bold text-white">Skills & Technologies Learned</h2>
+                <p class="text-slate-400 text-sm mt-2">Tools and skills developed in Mr. Smith's class to construct web applications and browser games.</p>
             </div>
 
-            <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div class="p-6 rounded-2xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-all">
-                    <div class="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-400 text-xl mb-4">
-                        <i class="fa-solid fa-gamepad"></i>
-                    </div>
-                    <h3 class="font-bold text-white mb-3">Game Engineering</h3>
-                    <div class="flex flex-wrap gap-2">
-                        <span class="px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 text-xs font-mono">HTML5 Canvas</span>
-                        <span class="px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 text-xs font-mono">Web Audio API</span>
-                        <span class="px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 text-xs font-mono">Vector Physics</span>
-                        <span class="px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 text-xs font-mono">2D Collisions</span>
-                    </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+                <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 text-center hover:border-brand-500/50 transition-all">
+                    <i class="fa-brands fa-html5 text-3xl text-orange-500 mb-2"></i>
+                    <div class="text-xs font-bold text-white">HTML5</div>
+                    <div class="text-[10px] text-slate-500 font-mono">Structure</div>
                 </div>
-
-                <div class="p-6 rounded-2xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-all">
-                    <div class="w-12 h-12 rounded-xl bg-brand-500/10 flex items-center justify-center text-brand-400 text-xl mb-4">
-                        <i class="fa-solid fa-code"></i>
-                    </div>
-                    <h3 class="font-bold text-white mb-3">Frontend Development</h3>
-                    <div class="flex flex-wrap gap-2">
-                        <span class="px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 text-xs font-mono">JavaScript (ES6+)</span>
-                        <span class="px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 text-xs font-mono">Tailwind CSS</span>
-                        <span class="px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 text-xs font-mono">Single-Page Architecture</span>
-                    </div>
+                <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 text-center hover:border-brand-500/50 transition-all">
+                    <i class="fa-brands fa-css3-alt text-3xl text-blue-500 mb-2"></i>
+                    <div class="text-xs font-bold text-white">Tailwind CSS</div>
+                    <div class="text-[10px] text-slate-500 font-mono">Styling</div>
                 </div>
-
-                <div class="p-6 rounded-2xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-all">
-                    <div class="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400 text-xl mb-4">
-                        <i class="fa-solid fa-brain"></i>
-                    </div>
-                    <h3 class="font-bold text-white mb-3">Web Tools & Assistants</h3>
-                    <div class="flex flex-wrap gap-2">
-                        <span class="px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 text-xs font-mono">AI Copilot Logic</span>
-                        <span class="px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 text-xs font-mono">Browser Storage</span>
-                        <span class="px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 text-xs font-mono">DOM Manipulation</span>
-                    </div>
+                <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 text-center hover:border-brand-500/50 transition-all">
+                    <i class="fa-brands fa-js text-3xl text-yellow-400 mb-2"></i>
+                    <div class="text-xs font-bold text-white">JavaScript</div>
+                    <div class="text-[10px] text-slate-500 font-mono">ES6+ Logic</div>
                 </div>
-
-                <div class="p-6 rounded-2xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-all">
-                    <div class="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 text-xl mb-4">
-                        <i class="fa-solid fa-share-nodes"></i>
-                    </div>
-                    <h3 class="font-bold text-white mb-3">Distribution & Versioning</h3>
-                    <div class="flex flex-wrap gap-2">
-                        <span class="px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 text-xs font-mono">Git & GitHub</span>
-                        <span class="px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 text-xs font-mono">Standalone Exports</span>
-                        <span class="px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 text-xs font-mono">History API</span>
-                    </div>
+                <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 text-center hover:border-brand-500/50 transition-all">
+                    <i class="fa-solid fa-paintbrush text-3xl text-purple-400 mb-2"></i>
+                    <div class="text-xs font-bold text-white">HTML Canvas</div>
+                    <div class="text-[10px] text-slate-500 font-mono">Physics & Math</div>
                 </div>
-            </div>
-        </section>
-
-        <!-- Bookmarks & Quick Links Footer Section -->
-        <section id="contact" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-slate-800/60">
-            <div class="max-w-3xl mx-auto glass-panel p-8 rounded-3xl border border-slate-800 text-center space-y-6">
-                <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-500 to-orange-500 p-[2px] mx-auto">
-                    <div class="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-xl text-brand-400">
-                        <i class="fa-solid fa-bookmark"></i>
-                    </div>
+                <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 text-center hover:border-brand-500/50 transition-all">
+                    <i class="fa-solid fa-file-audio text-3xl text-emerald-400 mb-2"></i>
+                    <div class="text-xs font-bold text-white">Web Audio API</div>
+                    <div class="text-[10px] text-slate-500 font-mono">Sound Effects</div>
                 </div>
-                <h2 class="text-2xl sm:text-3xl font-bold text-white">Bookmarks & Site Links</h2>
-                <p class="text-slate-400 text-sm sm:text-base max-w-lg mx-auto">
-                    Quick bookmark links to my official homepage and source repository:
-                </p>
-                <div class="flex flex-wrap items-center justify-center gap-4 pt-2">
-                    <a href="#" class="px-5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-brand-400 hover:border-brand-500 transition-all text-sm font-semibold flex items-center gap-2">
-                        <i class="fa-solid fa-house"></i>
-                        <span>Homepage (Current Site)</span>
-                    </a>
-                    <a href="https://github.com" target="_blank" rel="noopener noreferrer" class="px-5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-purple-400 hover:border-purple-500 transition-all text-sm font-semibold flex items-center gap-2">
-                        <i class="fa-brands fa-github"></i>
-                        <span>GitHub Repository</span>
-                    </a>
+                <div class="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 text-center hover:border-brand-500/50 transition-all">
+                    <i class="fa-solid fa-robot text-3xl text-brand-400 mb-2"></i>
+                    <div class="text-xs font-bold text-white">AI Tools</div>
+                    <div class="text-[10px] text-slate-500 font-mono">Prompt Engineering</div>
                 </div>
             </div>
         </section>
     </main>
 
-    <!-- Playable Game Modal Modal View -->
-    <div id="gameModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-2 sm:p-4 bg-slate-950/90 backdrop-blur-md">
-        <div class="relative w-full max-w-5xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[92vh] sm:h-[88vh]">
-            <!-- Header bar for Game -->
-            <div class="flex items-center justify-between px-4 py-3 bg-slate-950 border-b border-slate-800">
-                <div class="flex items-center gap-3">
-                    <button id="backToHomeBtn" class="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-xs flex items-center gap-1.5" title="Go back to homepage">
-                        <i class="fa-solid fa-arrow-left"></i>
-                        <span class="hidden sm:inline font-semibold">Back to Homepage</span>
-                    </button>
-                    <span class="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-600 to-orange-500 flex items-center justify-center text-lg shadow">🏀</span>
-                    <div>
-                        <h3 class="font-arcade text-lg sm:text-xl text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-amber-300 tracking-wider">BASKETBALL CHAOS</h3>
-                    </div>
-                </div>
-
+    <!-- AI Assistant Modal -->
+    <div id="aiModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-lg rounded-3xl border border-slate-800 overflow-hidden shadow-2xl">
+            <div class="p-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
                 <div class="flex items-center gap-2">
-                    <div class="bg-slate-900 px-3 py-1 rounded-lg border border-slate-800 flex items-center gap-1.5 text-xs font-arcade text-yellow-400">
-                        <span>🪙</span>
-                        <span id="gameCoinsDisplay">0</span>
-                    </div>
-                    <select id="gameDiffSelect" class="bg-slate-900 text-amber-300 text-xs font-tech px-2 py-1 rounded-lg border border-slate-800 focus:outline-none cursor-pointer">
-                        <option value="rookie">🟢 Rookie</option>
-                        <option value="pro" selected>🟡 Pro</option>
-                        <option value="allstar">🔴 All-Star</option>
-                    </select>
-                    <button id="downloadGameBtn" class="px-2.5 py-1 rounded-lg bg-emerald-900/80 hover:bg-emerald-800 text-emerald-200 border border-emerald-700 text-xs font-semibold flex items-center gap-1" title="Download standalone game HTML file">
-                        <i class="fa-solid fa-download"></i>
-                        <span class="hidden sm:inline">Download Game</span>
-                    </button>
-                    <button id="toggleShopBtn" class="px-2.5 py-1 rounded-lg bg-indigo-900/80 text-indigo-200 border border-indigo-700 text-xs font-semibold flex items-center gap-1">
-                        <i class="fa-solid fa-store text-indigo-400"></i>
-                        <span class="hidden sm:inline">Shop</span>
-                    </button>
-                    <button id="toggleSoundBtn" class="p-1.5 rounded-lg bg-slate-800 text-amber-400 border border-slate-700 text-xs" title="Toggle Sound">
-                        <i id="gameSoundIcon" class="fa-solid fa-volume-high"></i>
-                    </button>
-                    <button id="closeGameModal" class="p-1.5 rounded-lg bg-red-950/80 text-red-300 border border-red-800 text-xs hover:bg-red-900 transition-colors" title="Close Game View">
-                        <i class="fa-solid fa-xmark text-sm"></i>
-                    </button>
+                    <i class="fa-solid fa-robot text-brand-400"></i>
+                    <span class="font-bold text-sm text-white">Building With AI Portfolio Assistant</span>
+                </div>
+                <button id="closeAiModal" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="aiChatBox" class="p-4 h-64 overflow-y-auto space-y-3 custom-scrollbar text-xs">
+                <div class="bg-slate-900 p-3 rounded-xl border border-slate-800 text-slate-300">
+                    👋 Hi! I'm Sam's AI Portfolio Assistant. Ask me about his projects, basketball game physics, or Mr. Smith's class!
                 </div>
             </div>
-
-            <!-- Scoreboard bar -->
-            <div class="bg-slate-950/60 px-4 py-2 border-b border-slate-800/80 flex items-center justify-between text-xs font-tech">
-                <div class="flex items-center gap-4">
-                    <div>SCORE: <span id="gameScore" class="font-arcade text-amber-400 text-base">0</span></div>
-                    <div>HIGH: <span id="gameHighScore" class="font-arcade text-emerald-400 text-base">0</span></div>
-                    <div>STREAK: <span id="gameStreak" class="font-arcade text-orange-500 text-base">0 🔥</span></div>
-                </div>
-                <div class="text-slate-400 text-xs font-mono hidden sm:block">Drag ball to aim trajectory & release to shoot!</div>
-            </div>
-
-            <!-- Canvas Container -->
-            <div class="relative flex-1 bg-slate-950 overflow-hidden court-bg game-canvas-container flex items-center justify-center">
-                <canvas id="gameCanvas" class="w-full h-full block cursor-crosshair"></canvas>
-
-                <!-- In-Game Upgrades Shop Drawer -->
-                <div id="shopOverlay" class="absolute inset-y-0 right-0 w-full sm:w-80 bg-slate-950/95 border-l border-slate-800 p-4 hidden flex-col justify-between z-20 backdrop-blur-md">
-                    <div>
-                        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
-                            <h4 class="font-arcade text-amber-400 text-base flex items-center gap-2">
-                                <i class="fa-solid fa-cart-shopping"></i> CHAOS SHOP
-                            </h4>
-                            <button id="closeShopBtn" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
-                        </div>
-                        <div class="space-y-3 py-4 text-xs font-tech">
-                            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between">
-                                <div>
-                                    <div class="font-bold text-white">🔥 Fireball Skin</div>
-                                    <div class="text-[10px] text-slate-400">Fiery particle trail</div>
-                                </div>
-                                <button id="buyFireballBtn" class="px-3 py-1 bg-amber-600 text-slate-950 rounded-lg font-bold">50 🪙</button>
-                            </div>
-                            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between">
-                                <div>
-                                    <div class="font-bold text-white">🎯 Trajectory Guide</div>
-                                    <div class="text-[10px] text-slate-400">Extended aiming arc</div>
-                                </div>
-                                <button id="buyGuideBtn" class="px-3 py-1 bg-amber-600 text-slate-950 rounded-lg font-bold">100 🪙</button>
-                            </div>
-                            <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between">
-                                <div>
-                                    <div class="font-bold text-white">🌟 Golden Hoop Rim</div>
-                                    <div class="text-[10px] text-slate-400">Slightly wider rim</div>
-                                </div>
-                                <button id="buyHoopBtn" class="px-3 py-1 bg-amber-600 text-slate-950 rounded-lg font-bold">150 🪙</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="text-[11px] text-slate-500 font-mono text-center">Earn coins by scoring points & streaks!</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Project Detail Modal -->
-    <div id="projectModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 sm:p-6 bg-slate-950/80 backdrop-blur-md">
-        <div class="relative w-full max-w-3xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-                <div class="flex items-center gap-3">
-                    <span id="modalCategoryBadge" class="px-2.5 py-1 rounded-full text-xs font-mono bg-brand-500/20 text-brand-400 border border-brand-500/30">Category</span>
-                    <h3 id="modalTitle" class="text-lg font-bold text-white">Project Title</h3>
-                </div>
-                <button id="closeProjectModal" class="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"><i class="fa-solid fa-xmark text-lg"></i></button>
-            </div>
-            <p id="modalDescription" class="text-slate-300 text-sm leading-relaxed"></p>
-            <div id="modalTechStack" class="flex flex-wrap gap-1.5"></div>
-            <div class="pt-4 flex gap-3 justify-end border-t border-slate-800">
-                <button id="modalActionBtn" class="px-4 py-2 rounded-xl bg-brand-600 text-white text-xs font-semibold flex items-center gap-1.5 hover:bg-brand-500">
-                    <i class="fa-solid fa-play"></i> Launch Creation
-                </button>
+            <div class="p-3 bg-slate-900 border-t border-slate-800 flex gap-2">
+                <input type="text" id="aiInput" placeholder="Ask a question..." class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500">
+                <button id="sendAiBtn" class="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold">Send</button>
             </div>
         </div>
     </div>
 
     <!-- Add Project Modal -->
-    <div id="addProjectModal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-        <div class="relative w-full max-w-xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6">
-            <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
-                <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                    <i class="fa-solid fa-plus-circle text-brand-500"></i> Add Creation Entry
-                </h3>
-                <button id="closeAddModal" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+    <div id="addProjectModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md rounded-3xl border border-slate-800 overflow-hidden shadow-2xl p-6 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-white text-base">Add New Creation</h3>
+                <button id="closeProjectModal" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            <form id="projectForm" class="space-y-4 text-xs sm:text-sm">
+            <form id="newProjectForm" class="space-y-3 text-xs">
                 <div>
-                    <label class="block text-slate-300 mb-1">Creation Title *</label>
-                    <input type="text" id="formTitle" required placeholder="e.g. Physics Simulator Sandbox" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-brand-500">
-                </div>
-                <div>
-                    <label class="block text-slate-300 mb-1">Category *</label>
-                    <select id="formCategory" required class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-brand-500">
-                        <option value="Games & Arcade">Games & Arcade</option>
-                        <option value="Audio & Synthesizers">Audio & Synthesizers</option>
-                        <option value="Web Tools">Web Tools</option>
-                    </select>
+                    <label class="block font-bold text-slate-300 mb-1">Project Title</label>
+                    <input type="text" id="projTitle" required placeholder="e.g., Physics Playground" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white">
                 </div>
                 <div>
-                    <label class="block text-slate-300 mb-1">Description *</label>
-                    <textarea id="formDescription" rows="3" required placeholder="Creation overview..." class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-brand-500"></textarea>
+                    <label class="block font-bold text-slate-300 mb-1">Category</label>
+                    <input type="text" id="projCategory" required placeholder="e.g., Arcade, Web App, AI" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white">
                 </div>
                 <div>
-                    <label class="block text-slate-300 mb-1">Tags (comma separated)</label>
-                    <input type="text" id="formTags" placeholder="HTML5 Canvas, Web Audio, JavaScript" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-brand-500">
+                    <label class="block font-bold text-slate-300 mb-1">Description</label>
+                    <textarea id="projDesc" rows="3" required placeholder="Short description of what you built..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white"></textarea>
                 </div>
-                <div class="pt-3 flex justify-end gap-2 border-t border-slate-800">
-                    <button type="button" id="cancelAddModal" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">Cancel</button>
-                    <button type="submit" class="px-5 py-2 rounded-xl bg-brand-600 text-white font-semibold">Save Creation</button>
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Tags (comma separated)</label>
+                    <input type="text" id="projTags" placeholder="e.g., Canvas, Audio, Tailwind" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white">
                 </div>
+                <button type="submit" class="w-full py-2.5 bg-brand-600 hover:bg-brand-500 font-bold text-white rounded-xl mt-2">Add Creation</button>
             </form>
         </div>
     </div>
 
-    <!-- AI Copilot Assistant Drawer -->
-    <div id="aiDrawer" class="fixed bottom-6 right-6 z-50 w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl hidden flex-col overflow-hidden">
-        <div class="flex items-center justify-between p-4 bg-slate-950 border-b border-slate-800">
-            <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-lg bg-brand-500/20 text-brand-400 flex items-center justify-center">
-                    <i class="fa-solid fa-robot text-sm"></i>
-                </div>
-                <div>
-                    <h4 class="font-bold text-sm text-white">Portfolio AI Assistant</h4>
-                    <span class="text-[10px] text-emerald-400 font-mono">DevHub Assistant</span>
-                </div>
-            </div>
-            <button id="closeAiDrawer" class="text-slate-400 hover:text-white p-1"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div id="aiChatMessages" class="p-4 h-72 overflow-y-auto space-y-3 custom-scrollbar text-xs">
-            <div class="flex gap-2 items-start">
-                <div class="w-6 h-6 rounded bg-brand-500/20 text-brand-400 flex items-center justify-center text-[10px]"><i class="fa-solid fa-bot"></i></div>
-                <div class="p-3 rounded-xl bg-slate-800 text-slate-200 max-w-[85%]">
-                    Hello! Ask me about my Basketball Chaos physics engine, Web Audio sound effects, or portfolio creations!
-                </div>
-            </div>
-        </div>
-        <div class="p-3 bg-slate-950 border-t border-slate-800 flex gap-2">
-            <input type="text" id="aiInput" placeholder="Ask about Basketball Chaos or my skills..." class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-brand-500">
-            <button id="aiSendBtn" class="px-3.5 py-2 rounded-xl bg-brand-600 text-white text-xs font-semibold"><i class="fa-solid fa-paper-plane"></i></button>
-        </div>
-    </div>
+    <!-- Notification Toast Box -->
+    <div id="toastBox" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-    <!-- Toast Notifications Container -->
-    <div id="toastContainer" class="fixed bottom-6 left-6 z-50 space-y-2 pointer-events-none"></div>
-
+    <!-- JavaScript Application Logic -->
     <script>
-        // Projects Data State (Only 100% genuine internal creations)
-        // Each entry configures rendering, tag chips, category filters, and modal interaction modes.
-        const DEFAULT_PROJECTS = [
-            // ------------------------------------------------------------------------
-            // 1. BASKETBALL CHAOS ARCADE
-            // Primary interactive feature: Canvas 2D basketball game with trajectory math,
-            // score streak tracking, procedural Web Audio SFX, and in-game shop upgrades.
-            // ------------------------------------------------------------------------
+        // Projects Data Storage
+        let defaultProjects = [
             {
-                id: 'chaos-basketball',
+                id: 'proj-1',
                 title: 'Basketball Chaos Arcade',
-                category: 'Games & Arcade', // Categorized as a playable arcade game
-                description: 'An interactive HTML5 Canvas arcade basketball simulation featuring drag-aim trajectory physics, dynamic moving hoops, streak multipliers, procedural Web Audio SFX, and skin upgrades.',
-                isGame: true, // Enables "PLAY GAME NOW" action button & launches canvas modal
-                tags: ['HTML5 Canvas', 'Web Audio API', 'Physics', 'JavaScript'],
+                category: 'Arcade Game',
+                description: 'An interactive 2D physics basketball game featuring trajectory prediction, drag-to-aim controls, and Web Audio API synthesized sound effects.',
+                tags: ['HTML5 Canvas', 'Physics Math', 'Web Audio', 'Tailwind'],
+                icon: 'fa-basketball',
+                color: 'from-orange-500 to-amber-500',
+                action: 'openGameModal'
             },
-
-            // ------------------------------------------------------------------------
-            // 2. WEB AUDIO SFX SYNTHESIZER
-            // Procedural audio generation module: Generates sound effects dynamically
-            // using Web Audio API oscillators, noise buffers, and gain envelopes.
-            // ------------------------------------------------------------------------
             {
-                id: 'sfx-synth-lab',
-                title: 'Web Audio SFX Synthesizer',
-                category: 'Audio & Synthesizers', // Categorized under Audio Synthesizers
-                description: 'A custom Web Audio API sound generator that synthesizes realistic arcade bounce, swish, rim contact, and coin pickup sounds without external audio assets.',
-                isGame: false, // Displayed as a detail card in the portfolio grid
-                tags: ['Web Audio API', 'Oscillators', 'Audio Filters', 'JavaScript'],
+                id: 'proj-2',
+                title: 'MYPLAYER Hoops Card Studio',
+                category: 'Web App',
+                description: 'Custom sports card generator featuring an interactive 5-axis SVG attribute radar system, OVR rating auto-theming, and filterable roster leaderboard.',
+                tags: ['SVG Radar', 'LocalStorage', 'Dynamic Forms'],
+                icon: 'fa-id-card',
+                color: 'from-amber-500 to-yellow-500',
+                action: 'openMyPlayerModal'
             },
-
-            // ------------------------------------------------------------------------
-            // 3. INTERACTIVE PARTICLE SANDBOX (FIXED CATEGORY)
-            // Real-time canvas particle engine powering ambient backdrops & streak trails.
-            // Fixed: Updated category from 'Games & Arcade' to 'Web Tools' to match isGame: false.
-            // ------------------------------------------------------------------------
             {
-                id: 'particle-playground',
-                title: 'Interactive Particle Sandbox',
-                category: 'Web Tools', // Updated category to align with non-game status (isGame: false)
-                description: 'Real-time vector particle canvas simulation powering smooth ambient backdrops and fiery trail effects for high-score streaks.',
-                isGame: false, // Canvas physics & background rendering utility
-                tags: ['HTML5 Canvas', '2D Math', 'Animation Loop'],
-            },
-
-            // ------------------------------------------------------------------------
-            // 4. DEVHUB PORTFOLIO COPILOT
-            // Assistant tool: Embedded conversational widget providing portfolio insights,
-            // physics formulas, and project breakdown information.
-            // ------------------------------------------------------------------------
-            {
-                id: 'copilot-workspace',
-                title: 'DevHub Portfolio Copilot',
-                category: 'Web Tools', // Categorized as a developer web tool
-                description: 'An embedded interactive assistant tool that answers questions regarding project physics algorithms, technical stack choices, and architecture details.',
-                isGame: false, // Interactive assistant drawer UI component
-                tags: ['JavaScript', 'DOM Logic', 'Conversational UI'],
+                id: 'proj-3',
+                title: 'Building With AI Copilot',
+                category: 'AI Tool',
+                description: 'Interactive portfolio assistant trained on class notes to answer questions about basketball physics, web development, and AI tools.',
+                tags: ['AI Prompting', 'UI Design', 'JavaScript'],
+                icon: 'fa-robot',
+                color: 'from-brand-500 to-purple-500',
+                action: 'openAiModal'
             }
         ];
 
-        let projects = [...DEFAULT_PROJECTS];
+        let projects = JSON.parse(localStorage.getItem('sams_devhub_projects')) || defaultProjects;
         let activeCategory = 'All';
-        let searchQuery = '';
-        let isGridView = true;
+        let viewMode = 'grid'; // 'grid' or 'list'
 
-        // Web Audio Synthesizer for Basketball Chaos Game SFX
-        class SoundEngine {
-            constructor() {
-                this.ctx = null;
-                this.enabled = true;
+        // MYPLAYER Cards dataset with 5-axis attributes & evaluator fields
+        let savedCards = JSON.parse(localStorage.getItem('myplayer_cards')) || [
+            {
+                id: 'card-1',
+                name: 'Shai Gilgeous-Alexander',
+                nickname: 'SGA',
+                team: 'OKC Thunder',
+                category: 'Club & Country',
+                country: 'CAN|🇨🇦',
+                role: 'Point Guard',
+                year: 2026,
+                rating: 96,
+                evaluator: 'Sam (Scout)',
+                scoutingNotes: 'Elite drives to rim, lethal midrange pullup, top defense.',
+                ins: 92,
+                out: 95,
+                ply: 98,
+                def: 88,
+                ath: 94
             }
-            init() {
-                if (!this.ctx) {
-                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-                    if (AudioCtx) this.ctx = new AudioCtx();
-                }
-            }
-            playBounce() {
-                if (!this.enabled) return;
-                this.init();
-                if (!this.ctx) return;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(120, this.ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.15);
-                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start();
-                osc.stop(this.ctx.currentTime + 0.15);
-            }
-            playRimHit() {
-                if (!this.enabled) return;
-                this.init();
-                if (!this.ctx) return;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(450, this.ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(150, this.ctx.currentTime + 0.1);
-                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start();
-                osc.stop(this.ctx.currentTime + 0.1);
-            }
-            playSwish() {
-                if (!this.enabled) return;
-                this.init();
-                if (!this.ctx) return;
-                const bufferSize = this.ctx.sampleRate * 0.25;
-                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-                const output = buffer.getChannelData(0);
-                for (let i = 0; i < bufferSize; i++) {
-                    output[i] = Math.random() * 2 - 1;
-                }
-                const noise = this.ctx.createBufferSource();
-                noise.buffer = buffer;
-                const filter = this.ctx.createBiquadFilter();
-                filter.type = 'bandpass';
-                filter.frequency.setValueAtTime(1000, this.ctx.currentTime);
-                filter.Q.setValueAtTime(3, this.ctx.currentTime);
-                const gain = this.ctx.createGain();
-                gain.gain.setValueAtTime(0.6, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
-                noise.connect(filter);
-                filter.connect(gain);
-                gain.connect(this.ctx.destination);
-                noise.start();
-            }
-            playCoin() {
-                if (!this.enabled) return;
-                this.init();
-                if (!this.ctx) return;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(987.77, this.ctx.currentTime);
-                osc.frequency.setValueAtTime(1318.51, this.ctx.currentTime + 0.08);
-                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start();
-                osc.stop(this.ctx.currentTime + 0.25);
-            }
-        }
+        ];
 
-        const sounds = new SoundEngine();
-
-        class BasketballGame {
-            constructor(canvasId) {
-                this.canvas = document.getElementById(canvasId);
-                this.ctx = this.canvas.getContext('2d');
-                
-                this.score = 0;
-                this.highScore = parseInt(localStorage.getItem('chaos_high_score') || '0');
-                this.streak = 0;
-                this.coins = parseInt(localStorage.getItem('chaos_coins') || '0');
-                
-                this.difficulty = 'pro';
-                this.hasFireball = false;
-                this.hasGuide = false;
-                this.hasGoldenHoop = false;
-
-                // Physics state
-                this.gravity = 0.45;
-                this.ball = {
-                    x: 120,
-                    y: 350,
-                    radius: 20,
-                    vx: 0,
-                    vy: 0,
-                    isDragging: false,
-                    isAirborne: false,
-                    hasScored: false
-                };
-                this.dragStart = { x: 0, y: 0 };
-                this.dragCurrent = { x: 0, y: 0 };
-
-                // Hoop setup
-                this.hoop = {
-                    x: 650,
-                    y: 220,
-                    radius: 35,
-                    vx: 0,
-                    vy: 1.5,
-                    baseY: 220
-                };
-
-                this.particles = [];
-                this.animId = null;
-
-                this.initEvents();
-                this.resize();
-            }
-
-            resize() {
-                if (!this.canvas.parentElement) return;
-                this.canvas.width = this.canvas.parentElement.clientWidth;
-                this.canvas.height = this.canvas.parentElement.clientHeight;
-                this.resetBall();
-                this.hoop.x = this.canvas.width - 150;
-                this.hoop.y = Math.min(this.canvas.height * 0.4, 250);
-                this.hoop.baseY = this.hoop.y;
-            }
-
-            resetBall() {
-                this.ball.x = 120;
-                this.ball.y = this.canvas.height - 140;
-                this.ball.vx = 0;
-                this.ball.vy = 0;
-                this.ball.isAirborne = false;
-                this.ball.isDragging = false;
-                this.ball.hasScored = false;
-            }
-
-            initEvents() {
-                const getPos = (e) => {
-                    const rect = this.canvas.getBoundingClientRect();
-                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                    return { x: clientX - rect.left, y: clientY - rect.top };
-                };
-
-                const startDrag = (e) => {
-                    if (this.ball.isAirborne) return;
-                    const pos = getPos(e);
-                    const dist = Math.hypot(pos.x - this.ball.x, pos.y - this.ball.y);
-                    if (dist < this.ball.radius * 2.5) {
-                        this.ball.isDragging = true;
-                        this.dragStart = { x: this.ball.x, y: this.ball.y };
-                        this.dragCurrent = pos;
-                    }
-                };
-
-                const moveDrag = (e) => {
-                    if (!this.ball.isDragging) return;
-                    this.dragCurrent = getPos(e);
-                };
-
-                const endDrag = () => {
-                    if (!this.ball.isDragging) return;
-                    this.ball.isDragging = false;
-                    
-                    const dx = this.dragStart.x - this.dragCurrent.x;
-                    const dy = this.dragStart.y - this.dragCurrent.y;
-                    
-                    this.ball.vx = Math.min(Math.max(dx * 0.18, -25), 25);
-                    this.ball.vy = Math.min(Math.max(dy * 0.18, -28), 5);
-
-                    if (Math.hypot(this.ball.vx, this.ball.vy) > 3) {
-                        this.ball.isAirborne = true;
-                    }
-                };
-
-                this.canvas.addEventListener('mousedown', startDrag);
-                this.canvas.addEventListener('mousemove', moveDrag);
-                window.addEventListener('mouseup', endDrag);
-
-                this.canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrag(e); }, { passive: false });
-                this.canvas.addEventListener('touchmove', (e) => { moveDrag(e); }, { passive: false });
-                window.addEventListener('touchend', endDrag);
-            }
-
-            spawnParticles(x, y, color, count = 15) {
-                for (let i = 0; i < count; i++) {
-                    this.particles.push({
-                        x, y,
-                        vx: (Math.random() - 0.5) * 8,
-                        vy: (Math.random() - 0.5) * 8,
-                        radius: Math.random() * 4 + 2,
-                        color,
-                        alpha: 1
-                    });
-                }
-            }
-
-            update() {
-                const effectiveHoopRadius = this.hasGoldenHoop ? 42 : 35;
-                if (this.difficulty === 'pro' || this.difficulty === 'allstar') {
-                    this.hoop.y += this.hoop.vy;
-                    if (this.hoop.y > this.hoop.baseY + 60 || this.hoop.y < this.hoop.baseY - 60) {
-                        this.hoop.vy *= -1;
-                    }
-                }
-
-                if (this.ball.isAirborne) {
-                    this.ball.vx *= 0.99;
-                    this.ball.vy += this.gravity;
-                    this.ball.x += this.ball.vx;
-                    this.ball.y += this.ball.vy;
-
-                    if (this.hasFireball || this.streak >= 3) {
-                        this.particles.push({
-                            x: this.ball.x,
-                            y: this.ball.y,
-                            vx: (Math.random() - 0.5) * 2,
-                            vy: (Math.random() - 0.5) * 2,
-                            radius: Math.random() * 5 + 3,
-                            color: this.streak >= 3 ? '#f97316' : '#ef4444',
-                            alpha: 0.8
-                        });
-                    }
-
-                    if (this.ball.y + this.ball.radius > this.canvas.height - 20) {
-                        this.ball.y = this.canvas.height - 20 - this.ball.radius;
-                        this.ball.vy *= -0.6;
-                        this.ball.vx *= 0.8;
-                        sounds.playBounce();
-                    }
-
-                    if (this.ball.x - this.ball.radius < 0 || this.ball.x + this.ball.radius > this.canvas.width) {
-                        this.ball.vx *= -0.7;
-                    }
-
-                    const backboardX = this.hoop.x + effectiveHoopRadius + 10;
-                    const backboardY = this.hoop.y - 60;
-                    const backboardH = 90;
-
-                    if (this.ball.x + this.ball.radius > backboardX - 8 &&
-                        this.ball.x - this.ball.radius < backboardX + 10 &&
-                        this.ball.y > backboardY && this.ball.y < backboardY + backboardH) {
-                        this.ball.vx *= -0.75;
-                        this.ball.x = backboardX - 8 - this.ball.radius;
-                        sounds.playRimHit();
-                    }
-
-                    const leftRim = { x: this.hoop.x - effectiveHoopRadius, y: this.hoop.y };
-                    const distLeftRim = Math.hypot(this.ball.x - leftRim.x, this.ball.y - leftRim.y);
-
-                    if (distLeftRim < this.ball.radius + 6) {
-                        this.ball.vx *= -0.7;
-                        this.ball.vy *= -0.7;
-                        sounds.playRimHit();
-                    }
-
-                    const distHoopCenter = Math.hypot(this.ball.x - this.hoop.x, this.ball.y - this.hoop.y);
-                    if (!this.ball.hasScored && distHoopCenter < effectiveHoopRadius && this.ball.vy > 0 && Math.abs(this.ball.y - this.hoop.y) < 15) {
-                        this.ball.hasScored = true;
-                        this.score += (this.streak >= 3 ? 2 : 1);
-                        this.streak++;
-                        this.coins += (this.streak >= 3 ? 5 : 2);
-                        
-                        if (this.score > this.highScore) {
-                            this.highScore = this.score;
-                            localStorage.setItem('chaos_high_score', this.highScore.toString());
-                        }
-                        localStorage.setItem('chaos_coins', this.coins.toString());
-
-                        sounds.playSwish();
-                        sounds.playCoin();
-                        this.spawnParticles(this.hoop.x, this.hoop.y, '#f59e0b', 25);
-                        showToast(`SWISH! +${this.streak >= 3 ? '2 (ON FIRE!)' : '1'} Point!`, 'success');
-                    }
-
-                    if (this.ball.y > this.canvas.height + 50 || (Math.abs(this.ball.vx) < 0.2 && Math.abs(this.ball.vy) < 0.2 && this.ball.y > this.canvas.height - 50)) {
-                        if (!this.ball.hasScored) {
-                            this.streak = 0;
-                        }
-                        this.resetBall();
-                    }
-                }
-
-                for (let i = this.particles.length - 1; i >= 0; i--) {
-                    const p = this.particles[i];
-                    p.x += p.vx;
-                    p.y += p.vy;
-                    p.alpha -= 0.03;
-                    if (p.alpha <= 0) this.particles.splice(i, 1);
-                }
-
-                document.getElementById('gameScore').textContent = this.score;
-                document.getElementById('gameHighScore').textContent = this.highScore;
-                document.getElementById('gameStreak').textContent = `${this.streak} ${this.streak >= 3 ? '🔥' : ''}`;
-                document.getElementById('gameCoinsDisplay').textContent = this.coins;
-                document.getElementById('statHighScore').textContent = this.highScore;
-            }
-
-            render() {
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-                this.ctx.lineWidth = 4;
-                this.ctx.beginPath();
-                this.ctx.arc(this.canvas.width * 0.5, this.canvas.height, 180, Math.PI, 0);
-                this.ctx.stroke();
-
-                if (this.ball.isDragging) {
-                    const dx = this.dragStart.x - this.dragCurrent.x;
-                    const dy = this.dragStart.y - this.dragCurrent.y;
-                    let simX = this.ball.x;
-                    let simY = this.ball.y;
-                    let simVx = Math.min(Math.max(dx * 0.18, -25), 25);
-                    let simVy = Math.min(Math.max(dy * 0.18, -28), 5);
-                    const steps = this.hasGuide ? 35 : 20;
-
-                    this.ctx.fillStyle = 'rgba(249, 115, 22, 0.6)';
-                    for (let i = 0; i < steps; i++) {
-                        simVx *= 0.99;
-                        simVy += this.gravity;
-                        simX += simVx;
-                        simY += simVy;
-                        this.ctx.beginPath();
-                        this.ctx.arc(simX, simY, Math.max(5 - i * 0.1, 2), 0, Math.PI * 2);
-                        this.ctx.fill();
-                    }
-                }
-
-                const effectiveHoopRadius = this.hasGoldenHoop ? 42 : 35;
-                const backboardX = this.hoop.x + effectiveHoopRadius + 8;
-                const backboardY = this.hoop.y - 60;
-                
-                this.ctx.fillStyle = '#1e293b';
-                this.ctx.strokeStyle = '#64748b';
-                this.ctx.lineWidth = 3;
-                this.ctx.fillRect(backboardX, backboardY, 12, 85);
-                this.ctx.strokeRect(backboardX, backboardY, 12, 85);
-
-                this.ctx.strokeStyle = this.hasGoldenHoop ? '#fbbf24' : '#ea580c';
-                this.ctx.lineWidth = 6;
-                this.ctx.beginPath();
-                this.ctx.ellipse(this.hoop.x, this.hoop.y, effectiveHoopRadius, 10, 0, 0, Math.PI * 2);
-                this.ctx.stroke();
-
-                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-                this.ctx.lineWidth = 1.5;
-                this.ctx.beginPath();
-                for (let i = -effectiveHoopRadius + 5; i <= effectiveHoopRadius - 5; i += 10) {
-                    this.ctx.moveTo(this.hoop.x + i, this.hoop.y);
-                    this.ctx.lineTo(this.hoop.x + i * 0.6, this.hoop.y + 35);
-                }
-                this.ctx.stroke();
-
-                this.particles.forEach(p => {
-                    this.ctx.fillStyle = p.color;
-                    this.ctx.globalAlpha = p.alpha;
-                    this.ctx.beginPath();
-                    this.ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                    this.ctx.fill();
-                    this.ctx.globalAlpha = 1;
-                });
-
-                this.ctx.save();
-                this.ctx.translate(this.ball.x, this.ball.y);
-                
-                if (this.streak >= 3 || this.hasFireball) {
-                    this.ctx.shadowColor = '#f97316';
-                    this.ctx.shadowBlur = 20;
-                }
-
-                const grad = this.ctx.createRadialGradient(-4, -4, 2, 0, 0, this.ball.radius);
-                grad.addColorStop(0, '#fdba74');
-                grad.addColorStop(0.7, '#ea580c');
-                grad.addColorStop(1, '#9a3412');
-                this.ctx.fillStyle = grad;
-                this.ctx.beginPath();
-                this.ctx.arc(0, 0, this.ball.radius, 0, Math.PI * 2);
-                this.ctx.fill();
-
-                this.ctx.strokeStyle = '#1e1005';
-                this.ctx.lineWidth = 2;
-                this.ctx.beginPath();
-                this.ctx.arc(0, 0, this.ball.radius, -Math.PI / 2, Math.PI / 2);
-                this.ctx.moveTo(-this.ball.radius, 0);
-                this.ctx.lineTo(this.ball.radius, 0);
-                this.ctx.stroke();
-
-                this.ctx.restore();
-            }
-
-            loop() {
-                this.update();
-                this.render();
-                this.animId = requestAnimationFrame(() => this.loop());
-            }
-
-            start() {
-                if (!this.animId) this.loop();
-            }
-
-            stop() {
-                if (this.animId) {
-                    cancelAnimationFrame(this.animId);
-                    this.animId = null;
-                }
-            }
-        }
-
-        let gameInstance = null;
-
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toastContainer');
+        // Toast Helper Function
+        function showToast(message, type = 'success') {
+            const toastBox = document.getElementById('toastBox');
             const toast = document.createElement('div');
-            toast.className = `pointer-events-auto px-4 py-2.5 rounded-xl shadow-lg border text-xs sm:text-sm font-medium flex items-center gap-2.5 transition-all duration-300 transform translate-y-2 opacity-0 ${
-                type === 'success' ? 'bg-emerald-950/90 border-emerald-800 text-emerald-200' : 'bg-slate-900/90 border-slate-700 text-slate-200'
-            }`;
-            toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check text-emerald-400' : 'fa-circle-info text-brand-400'}"></i> <span>${message}</span>`;
-            container.appendChild(toast);
-            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            const bgClass = type === 'info' ? 'bg-slate-900 border-brand-500 text-brand-300' : 'bg-slate-900 border-emerald-500 text-emerald-300';
+            toast.className = `px-4 py-3 rounded-2xl border shadow-xl text-xs font-semibold flex items-center gap-2 transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto ${bgClass}`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'info' ? 'fa-circle-info' : 'fa-circle-check'}"></i> ${message}`;
+            
+            toastBox.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
             setTimeout(() => {
                 toast.classList.add('opacity-0', 'translate-y-2');
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
         }
 
-        function copyToClipboard(text) {
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            document.body.appendChild(textarea);
-            textarea.select();
-            document.execCommand('copy');
-            document.body.removeChild(textarea);
-            showToast(`Copied "${text}" to clipboard!`, 'success');
+        // Modal Controls for MYPLAYER Card Studio
+        function openMyPlayerModal() {
+            const modal = document.getElementById('myplayerModal');
+            modal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+            updateLiveCard();
+            renderRoster();
         }
 
-        // --- Back Button Navigation & History API Support ---
-        const gameModal = document.getElementById('gameModal');
-
-        function openGameModal(pushHistory = true) {
-            gameModal.classList.remove('hidden');
-            if (pushHistory && window.location.hash !== '#game') {
-                history.pushState({ page: 'game' }, 'Basketball Chaos Game', '#game');
-            }
-            if (!gameInstance) {
-                gameInstance = new BasketballGame('gameCanvas');
-            }
-            gameInstance.resize();
-            gameInstance.start();
+        function closeMyPlayerModal() {
+            const modal = document.getElementById('myplayerModal');
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
         }
 
-        function closeGameModal(popHistory = false) {
-            gameModal.classList.add('hidden');
-            if (gameInstance) gameInstance.stop();
-            if (popHistory && window.location.hash === '#game') {
-                history.back();
-            }
+        function openAiModal() {
+            document.getElementById('aiModal').classList.remove('hidden');
         }
 
-        // Handle Browser "Back" button presses
-        window.addEventListener('popstate', (e) => {
-            if (!gameModal.classList.contains('hidden')) {
-                closeGameModal(false);
-            }
-        });
-
-        document.getElementById('navPlayGameBtn').onclick = () => openGameModal(true);
-        document.getElementById('heroPlayGameBtn').onclick = () => openGameModal(true);
-        document.getElementById('heroQuickPlay').onclick = () => openGameModal(true);
-        document.getElementById('closeGameModal').onclick = () => closeGameModal(true);
-        document.getElementById('backToHomeBtn').onclick = () => closeGameModal(true);
-
-        // Download Standalone Game File (.html)
-        document.getElementById('downloadGameBtn').onclick = () => {
-            const fullHtmlContent = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
-            const blob = new Blob([fullHtmlContent], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'Basketball_Chaos_Game.html';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showToast('Downloaded Basketball Chaos standalone game file!', 'success');
-        };
-
-        // Category & Render Functions
-        function renderCategoryFilters() {
-            const container = document.getElementById('categoryFilterContainer');
-            const categories = ['All', ...new Set(projects.map(p => p.category))];
-            container.innerHTML = categories.map(cat => `
-                <button onclick="setCategory('${cat}')" class="px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                    activeCategory === cat ? 'bg-brand-600 text-white shadow-md' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
-                }">
-                    ${cat}
-                </button>
-            `).join('');
-            document.getElementById('statCategories').textContent = categories.length - 1;
-        }
-
-        function setCategory(cat) {
-            activeCategory = cat;
-            renderCategoryFilters();
-            renderProjects();
-        }
-
+        // Projects Portfolio Rendering & Filtering
         function renderProjects() {
             const grid = document.getElementById('projectsGrid');
+            const searchVal = (document.getElementById('searchInput')?.value || '').toLowerCase();
             const noResults = document.getElementById('noResults');
-            
+
             const filtered = projects.filter(p => {
-                const matchesCategory = activeCategory === 'All' || p.category === activeCategory;
-                const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                                      p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                      p.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
-                return matchesCategory && matchesSearch;
+                const matchesCat = activeCategory === 'All' || p.category === activeCategory;
+                const matchesSearch = p.title.toLowerCase().includes(searchVal) ||
+                                      p.description.toLowerCase().includes(searchVal) ||
+                                      p.tags.some(t => t.toLowerCase().includes(searchVal));
+                return matchesCat && matchesSearch;
             });
 
             document.getElementById('statProjectCount').textContent = projects.length;
@@ -1179,275 +910,839 @@
                 grid.innerHTML = '';
                 noResults.classList.remove('hidden');
                 return;
-            } else {
-                noResults.classList.add('hidden');
             }
+            noResults.classList.add('hidden');
 
-            grid.className = isGridView ? "grid sm:grid-cols-2 lg:grid-cols-3 gap-6" : "flex flex-col gap-4";
-
-            grid.innerHTML = filtered.map(p => `
-                <div class="group rounded-2xl bg-slate-900 border border-slate-800 hover:border-brand-500/50 transition-all duration-300 overflow-hidden flex flex-col justify-between p-5">
-                    <div>
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="text-[10px] font-mono px-2.5 py-1 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20">${p.category}</span>
-                            ${p.isGame ? `<span class="text-[10px] font-arcade px-2 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/30">PLAYABLE GAME</span>` : ''}
+            if (viewMode === 'grid') {
+                grid.className = 'grid sm:grid-cols-2 lg:grid-cols-3 gap-6';
+                grid.innerHTML = filtered.map(p => `
+                    <div class="glass-panel p-6 rounded-3xl border border-slate-800 hover:border-slate-700 transition-all flex flex-col justify-between group hover:-translate-y-1">
+                        <div>
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr ${p.color || 'from-brand-500 to-purple-500'} p-0.5 shadow-lg">
+                                    <div class="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
+                                        <i class="fa-solid ${p.icon || 'fa-code'} text-white text-lg"></i>
+                                    </div>
+                                </div>
+                                <span class="px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 text-[10px] font-mono font-semibold">${p.category}</span>
+                            </div>
+                            <h3 class="font-bold text-white text-lg mb-2 group-hover:text-brand-400 transition-colors">${p.title}</h3>
+                            <p class="text-xs text-slate-400 leading-relaxed mb-4">${p.description}</p>
                         </div>
-                        <h3 class="font-bold text-lg text-white group-hover:text-brand-400 transition-colors">${p.title}</h3>
-                        <p class="text-xs text-slate-400 mt-2 line-clamp-3 leading-relaxed">${p.description}</p>
-                    </div>
-
-                    <div class="pt-4 mt-4 border-t border-slate-800/80 space-y-3">
-                        <div class="flex flex-wrap gap-1">${p.tags.map(t => `<span class="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-[11px] font-mono">${t}</span>`).join('')}</div>
-                        <div class="flex items-center justify-between pt-1">
-                            ${p.isGame ? `
-                                <button onclick="openGameModal(true)" class="w-full py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-slate-950 font-bold font-tech text-xs flex items-center justify-center gap-1.5 hover:brightness-110">
-                                    <span>🏀</span> PLAY GAME NOW
-                                </button>
-                            ` : `
-                                <button onclick="openProjectModal('${p.id}')" class="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-brand-400 flex items-center justify-center gap-1">
-                                    View Details & Launch
-                                </button>
-                            `}
+                        <div>
+                            <div class="flex flex-wrap gap-1.5 mb-5">
+                                ${p.tags.map(t => `<span class="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-[10px] font-mono text-slate-400">${t}</span>`).join('')}
+                            </div>
+                            <button onclick="${p.action ? p.action + '()' : 'showToast(\'Interactive demo launched!\')'}" class="w-full py-2.5 bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700/80 transition-all flex items-center justify-center gap-2">
+                                <span>Launch Interactive Creation</span>
+                                <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                            </button>
                         </div>
                     </div>
-                </div>
+                `).join('');
+            } else {
+                grid.className = 'flex flex-col gap-4';
+                grid.innerHTML = filtered.map(p => `
+                    <div class="glass-panel p-5 rounded-2xl border border-slate-800 hover:border-slate-700 transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr ${p.color || 'from-brand-500 to-purple-500'} p-0.5 flex-shrink-0">
+                                <div class="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
+                                    <i class="fa-solid ${p.icon || 'fa-code'} text-white text-sm"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="font-bold text-white text-base">${p.title}</h3>
+                                    <span class="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[9px] font-mono">${p.category}</span>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-0.5">${p.description}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                            <div class="hidden lg:flex gap-1">
+                                ${p.tags.map(t => `<span class="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-[9px] font-mono text-slate-400">${t}</span>`).join('')}
+                            </div>
+                            <button onclick="${p.action ? p.action + '()' : 'showToast(\'Interactive demo launched!\')'}" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 whitespace-nowrap">
+                                <span>Launch Demo</span>
+                                <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function renderCategories() {
+            const container = document.getElementById('categoryFilterContainer');
+            const categories = ['All', ...new Set(projects.map(p => p.category))];
+            
+            document.getElementById('statCategories').textContent = categories.length - 1;
+
+            container.innerHTML = categories.map(cat => `
+                <button onclick="setCategory('${cat}')" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                    activeCategory === cat 
+                    ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/30' 
+                    : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-white border border-slate-800'
+                }">
+                    ${cat}
+                </button>
             `).join('');
         }
 
-        // In-game Shop handlers
-        const shopOverlay = document.getElementById('shopOverlay');
-        document.getElementById('toggleShopBtn').onclick = () => shopOverlay.classList.toggle('hidden');
-        document.getElementById('closeShopBtn').onclick = () => shopOverlay.classList.add('hidden');
-
-        document.getElementById('buyFireballBtn').onclick = () => {
-            if (!gameInstance) return;
-            if (gameInstance.coins >= 50) {
-                gameInstance.coins -= 50;
-                gameInstance.hasFireball = true;
-                localStorage.setItem('chaos_coins', gameInstance.coins.toString());
-                showToast('Unlocked Fireball Skin!', 'success');
-            } else showToast('Not enough coins!', 'info');
-        };
-
-        document.getElementById('buyGuideBtn').onclick = () => {
-            if (!gameInstance) return;
-            if (gameInstance.coins >= 100) {
-                gameInstance.coins -= 100;
-                gameInstance.hasGuide = true;
-                localStorage.setItem('chaos_coins', gameInstance.coins.toString());
-                showToast('Unlocked Extended Trajectory Guide!', 'success');
-            } else showToast('Not enough coins!', 'info');
-        };
-
-        document.getElementById('buyHoopBtn').onclick = () => {
-            if (!gameInstance) return;
-            if (gameInstance.coins >= 150) {
-                gameInstance.coins -= 150;
-                gameInstance.hasGoldenHoop = true;
-                localStorage.setItem('chaos_coins', gameInstance.coins.toString());
-                showToast('Unlocked Golden Hoop Rim!', 'success');
-            } else showToast('Not enough coins!', 'info');
-        };
-
-        document.getElementById('gameDiffSelect').onchange = (e) => {
-            if (gameInstance) gameInstance.difficulty = e.target.value;
-        };
-
-        document.getElementById('toggleSoundBtn').onclick = () => {
-            sounds.enabled = !sounds.enabled;
-            document.getElementById('gameSoundIcon').className = sounds.enabled ? "fa-solid fa-volume-high" : "fa-solid fa-volume-xmark";
-            showToast(sounds.enabled ? "Sound Enabled" : "Sound Muted");
-        };
-
-        // Project Modals
-        function openProjectModal(id) {
-            const p = projects.find(item => item.id === id);
-            if (!p) return;
-            document.getElementById('modalTitle').textContent = p.title;
-            document.getElementById('modalCategoryBadge').textContent = p.category;
-            document.getElementById('modalDescription').textContent = p.description;
-            document.getElementById('modalTechStack').innerHTML = p.tags.map(t => `<span class="px-2 py-1 bg-slate-800 text-xs text-slate-300 rounded">${t}</span>`).join('');
-            
-            const modalBtn = document.getElementById('modalActionBtn');
-            if (p.isGame) {
-                modalBtn.onclick = () => {
-                    document.getElementById('projectModal').classList.add('hidden');
-                    openGameModal(true);
-                };
-            } else {
-                modalBtn.onclick = () => {
-                    document.getElementById('projectModal').classList.add('hidden');
-                    showToast(`Launching ${p.title} demo...`, 'success');
-                };
-            }
-            document.getElementById('projectModal').classList.remove('hidden');
+        function setCategory(cat) {
+            activeCategory = cat;
+            renderCategories();
+            renderProjects();
         }
 
-        document.getElementById('closeProjectModal').onclick = () => document.getElementById('projectModal').classList.add('hidden');
+        // Generate SVG 5-Axis Radar Chart
+        function generateRadarSVG(ins, out, ply, def, ath, themeColor = '#facc15') {
+            const size = 180;
+            const cx = size / 2;
+            const cy = size / 2;
+            const r = 65;
 
-        // Search & Layout Toggles
-        document.getElementById('searchInput').oninput = (e) => {
-            searchQuery = e.target.value;
-            renderProjects();
-        };
+            const attrs = [
+                { label: 'INS', val: ins },
+                { label: 'OUT', val: out },
+                { label: 'PLY', val: ply },
+                { label: 'DEF', val: def },
+                { label: 'ATH', val: ath }
+            ];
 
-        document.getElementById('viewGridBtn').onclick = () => {
-            isGridView = true;
-            document.getElementById('viewGridBtn').className = "p-2 rounded-lg bg-slate-800 text-brand-400";
-            document.getElementById('viewListBtn').className = "p-2 rounded-lg text-slate-400 hover:text-white";
-            renderProjects();
-        };
+            const angles = attrs.map((_, i) => -Math.PI / 2 + (i * 2 * Math.PI / 5));
 
-        document.getElementById('viewListBtn').onclick = () => {
-            isGridView = false;
-            document.getElementById('viewListBtn').className = "p-2 rounded-lg bg-slate-800 text-brand-400";
-            document.getElementById('viewGridBtn').className = "p-2 rounded-lg text-slate-400 hover:text-white";
-            renderProjects();
-        };
+            let websSVG = '';
+            [0.33, 0.66, 1.0].forEach(scale => {
+                const webPoints = angles.map(a => `${cx + r * scale * Math.cos(a)},${cy + r * scale * Math.sin(a)}`).join(' ');
+                websSVG += `<polygon points="${webPoints}" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>`;
+            });
 
-        document.getElementById('resetFiltersBtn').onclick = () => {
-            searchQuery = '';
-            activeCategory = 'All';
-            document.getElementById('searchInput').value = '';
-            renderCategoryFilters();
-            renderProjects();
-        };
+            let axisSVG = '';
+            angles.forEach((a, i) => {
+                const x2 = cx + r * Math.cos(a);
+                const y2 = cy + r * Math.sin(a);
+                const labelX = cx + (r + 14) * Math.cos(a);
+                const labelY = cy + (r + 14) * Math.sin(a);
 
-        // Add Project Modal
-        const addProjectModal = document.getElementById('addProjectModal');
-        document.getElementById('addProjectBtn').onclick = () => addProjectModal.classList.remove('hidden');
-        document.getElementById('closeAddModal').onclick = () => addProjectModal.classList.add('hidden');
-        document.getElementById('cancelAddModal').onclick = () => addProjectModal.classList.add('hidden');
+                axisSVG += `<line x1="${cx}" y1="${cy}" x2="${x2}" y2="${y2}" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>`;
+                axisSVG += `<text x="${labelX}" y="${labelY + 3}" fill="#cbd5e1" font-size="8" font-weight="bold" font-family="monospace" text-anchor="middle">${attrs[i].label}</text>`;
+            });
 
-        document.getElementById('projectForm').onsubmit = (e) => {
+            const polyPoints = angles.map((a, i) => {
+                const normVal = Math.min(Math.max(attrs[i].val, 30), 100) / 100;
+                return `${cx + r * normVal * Math.cos(a)},${cy + r * normVal * Math.sin(a)}`;
+            }).join(' ');
+
+            return `
+                <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" class="overflow-visible">
+                    ${websSVG}
+                    ${axisSVG}
+                    <polygon points="${polyPoints}" fill="${themeColor}" fill-opacity="0.35" stroke="${themeColor}" stroke-width="2"/>
+                </svg>
+            `;
+        }
+
+        function updateLiveCard() {
+            const name = document.getElementById('input-name')?.value || 'Player Name';
+            const nickname = document.getElementById('input-nickname')?.value || '';
+            const team = document.getElementById('input-team')?.value || 'Team';
+            const category = document.getElementById('input-category')?.value || 'Club & Country';
+            const countryVal = (document.getElementById('input-country')?.value || 'CAN|🇨🇦').split('|')[1] || '🇨🇦';
+            const role = document.getElementById('input-role')?.value || 'Point Guard';
+            const year = document.getElementById('input-year')?.value || '2026';
+            const rating = parseInt(document.getElementById('input-rating')?.value) || 90;
+            const evaluator = document.getElementById('input-evaluator')?.value || 'Scout';
+
+            const ins = parseInt(document.getElementById('attr-ins')?.value) || 75;
+            const out = parseInt(document.getElementById('attr-out')?.value) || 75;
+            const ply = parseInt(document.getElementById('attr-ply')?.value) || 75;
+            const def = parseInt(document.getElementById('attr-def')?.value) || 75;
+            const ath = parseInt(document.getElementById('attr-ath')?.value) || 75;
+
+            if (document.getElementById('val-ins')) document.getElementById('val-ins').textContent = ins;
+            if (document.getElementById('val-out')) document.getElementById('val-out').textContent = out;
+            if (document.getElementById('val-ply')) document.getElementById('val-ply').textContent = ply;
+            if (document.getElementById('val-def')) document.getElementById('val-def').textContent = def;
+            if (document.getElementById('val-ath')) document.getElementById('val-ath').textContent = ath;
+            if (document.getElementById('ovrValueBadge')) document.getElementById('ovrValueBadge').textContent = rating;
+
+            let themeClass = 'theme-gold';
+            let themeHex = '#facc15';
+            if (rating >= 96) {
+                themeClass = 'theme-obsidian';
+                themeHex = '#38bdf8';
+            } else if (rating >= 90) {
+                themeClass = 'theme-diamond';
+                themeHex = '#00f2fe';
+            }
+
+            const preview = document.getElementById('liveCardPreview');
+            if (preview) {
+                preview.className = `hoop-card ${themeClass} w-full max-w-sm rounded-3xl p-5 relative overflow-hidden text-white font-sans border-2`;
+            }
+
+            if (document.getElementById('previewRating')) document.getElementById('previewRating').textContent = rating;
+            if (document.getElementById('previewRole')) document.getElementById('previewRole').textContent = role.toUpperCase();
+            if (document.getElementById('previewFlag')) document.getElementById('previewFlag').textContent = countryVal;
+            if (document.getElementById('previewCategoryBadge')) document.getElementById('previewCategoryBadge').textContent = category;
+            if (document.getElementById('previewName')) document.getElementById('previewName').textContent = name;
+            if (document.getElementById('previewNickname')) document.getElementById('previewNickname').textContent = nickname ? `"${nickname}"` : '';
+            if (document.getElementById('previewTeam')) document.getElementById('previewTeam').textContent = team;
+            if (document.getElementById('previewYear')) document.getElementById('previewYear').textContent = year;
+            if (document.getElementById('previewEvaluator')) document.getElementById('previewEvaluator').textContent = evaluator;
+
+            if (document.getElementById('radarContainer')) {
+                document.getElementById('radarContainer').innerHTML = generateRadarSVG(ins, out, ply, def, ath, themeHex);
+            }
+        }
+
+        function renderRoster() {
+            const tableBody = document.getElementById('rosterTableBody');
+            if (!tableBody) return;
+
+            const searchVal = (document.getElementById('rosterSearchInput')?.value || '').toLowerCase();
+            const categoryFilter = document.getElementById('rosterCategoryFilter')?.value || 'All';
+            const sortOption = document.getElementById('rosterSortOption')?.value || 'rating-desc';
+
+            let filtered = savedCards.filter(c => {
+                const matchesSearch = c.name.toLowerCase().includes(searchVal) ||
+                                      c.team.toLowerCase().includes(searchVal) ||
+                                      (c.evaluator && c.evaluator.toLowerCase().includes(searchVal));
+                const matchesCat = categoryFilter === 'All' || c.category === categoryFilter;
+                return matchesSearch && matchesCat;
+            });
+
+            filtered.sort((a, b) => {
+                if (sortOption === 'rating-desc') return b.rating - a.rating;
+                if (sortOption === 'rating-asc') return a.rating - b.rating;
+                if (sortOption === 'name-asc') return a.name.localeCompare(b.name);
+                if (sortOption === 'year-desc') return b.year - a.year;
+                return 0;
+            });
+
+            if (document.getElementById('savedCardCount')) {
+                document.getElementById('savedCardCount').textContent = filtered.length;
+            }
+
+            if (filtered.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500">No player cards found matching your filter criteria.</td></tr>`;
+                return;
+            }
+
+            tableBody.innerHTML = filtered.map(c => `
+                <tr class="hover:bg-slate-900/50 transition-colors">
+                    <td class="p-3 font-bold text-white flex items-center gap-2">
+                        <span>🏀</span>
+                        <div>
+                            <div>${c.name}</div>
+                            ${c.nickname ? `<div class="text-[10px] text-amber-400 font-normal">"${c.nickname}"</div>` : ''}
+                        </div>
+                    </td>
+                    <td class="p-3 font-mono text-slate-300">
+                        <div>${c.team}</div>
+                        <div class="text-[10px] text-slate-500">${c.category || 'Club & Country'}</div>
+                    </td>
+                    <td class="p-3 text-slate-400">${c.role}</td>
+                    <td class="p-3 font-mono font-bold text-emerald-400 text-sm">${c.rating}</td>
+                    <td class="p-3 text-slate-400">${c.evaluator || 'Sam'}</td>
+                    <td class="p-3 text-right">
+                        <button onclick="editCard('${c.id}')" class="p-1.5 text-brand-400 hover:text-brand-300 mr-1" title="Edit Card"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button onclick="duplicateCard('${c.id}')" class="p-1.5 text-amber-400 hover:text-amber-300 mr-1" title="Duplicate Card"><i class="fa-solid fa-copy"></i></button>
+                        <button onclick="deleteCard('${c.id}')" class="p-1.5 text-rose-400 hover:text-rose-300" title="Delete Card"><i class="fa-solid fa-trash-can"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function saveCardsToStorage() {
+            localStorage.setItem('myplayer_cards', JSON.stringify(savedCards));
+            renderRoster();
+        }
+
+        document.getElementById('card-form').addEventListener('submit', (e) => {
             e.preventDefault();
-            const title = document.getElementById('formTitle').value;
-            const category = document.getElementById('formCategory').value;
-            const description = document.getElementById('formDescription').value;
-            const tagsRaw = document.getElementById('formTags').value;
-            const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()) : ['Creation'];
+            const editId = document.getElementById('card-id').value;
 
-            projects.unshift({ id: 'proj-' + Date.now(), title, category, description, tags, isGame: false });
-            renderCategoryFilters();
-            renderProjects();
-            addProjectModal.classList.add('hidden');
-            showToast(`Added "${title}" to your creations!`, 'success');
-        };
+            const cardData = {
+                id: editId || 'card-' + Date.now(),
+                name: document.getElementById('input-name').value,
+                nickname: document.getElementById('input-nickname').value,
+                team: document.getElementById('input-team').value,
+                category: document.getElementById('input-category').value,
+                country: document.getElementById('input-country').value,
+                role: document.getElementById('input-role').value,
+                year: parseInt(document.getElementById('input-year').value) || 2026,
+                rating: parseInt(document.getElementById('input-rating').value) || 90,
+                evaluator: document.getElementById('input-evaluator').value || 'Scout',
+                scoutingNotes: document.getElementById('input-notes').value || '',
+                ins: parseInt(document.getElementById('attr-ins').value) || 75,
+                out: parseInt(document.getElementById('attr-out').value) || 75,
+                ply: parseInt(document.getElementById('attr-ply').value) || 75,
+                def: parseInt(document.getElementById('attr-def').value) || 75,
+                ath: parseInt(document.getElementById('attr-ath').value) || 75
+            };
 
-        // Export Data
-        document.getElementById('exportDataBtn').onclick = () => {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projects, null, 2));
-            const anchor = document.createElement('a');
-            anchor.setAttribute("href", dataStr);
-            anchor.setAttribute("download", "devhub_creations.json");
-            anchor.click();
-            showToast('Exported creations config JSON!', 'success');
-        };
+            if (editId) {
+                const idx = savedCards.findIndex(c => c.id === editId);
+                if (idx !== -1) savedCards[idx] = cardData;
+                showToast('Scouting Card updated!');
+            } else {
+                savedCards.unshift(cardData);
+                showToast('New Scouting Card saved to roster!');
+            }
 
-        // Mobile Menu
-        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-        const mobileMenu = document.getElementById('mobileMenu');
-        mobileMenuBtn.onclick = () => mobileMenu.classList.toggle('hidden');
-        document.querySelectorAll('.mobile-nav-link').forEach(link => {
-            link.onclick = () => mobileMenu.classList.add('hidden');
+            document.getElementById('card-id').value = '';
+            saveCardsToStorage();
         });
 
-        // AI Copilot Assistant Drawer
-        const aiDrawer = document.getElementById('aiDrawer');
-        document.getElementById('aiBotToggleBtn').onclick = () => aiDrawer.classList.toggle('hidden');
-        document.getElementById('closeAiDrawer').onclick = () => aiDrawer.classList.add('hidden');
+        document.getElementById('resetCardFormBtn').addEventListener('click', () => {
+            document.getElementById('card-form').reset();
+            document.getElementById('card-id').value = '';
+            document.getElementById('input-rating').value = 96;
+            document.getElementById('attr-ins').value = 92;
+            document.getElementById('attr-out').value = 95;
+            document.getElementById('attr-ply').value = 98;
+            document.getElementById('attr-def').value = 88;
+            document.getElementById('attr-ath').value = 94;
+            updateLiveCard();
+            showToast('Form reset to default values', 'info');
+        });
 
-        document.getElementById('aiSendBtn').onclick = () => {
+        function editCard(id) {
+            const card = savedCards.find(c => c.id === id);
+            if (!card) return;
+
+            document.getElementById('card-id').value = card.id;
+            document.getElementById('input-name').value = card.name;
+            document.getElementById('input-nickname').value = card.nickname || '';
+            document.getElementById('input-team').value = card.team;
+            document.getElementById('input-category').value = card.category || 'Club & Country';
+            document.getElementById('input-country').value = card.country || 'CAN|🇨🇦';
+            document.getElementById('input-role').value = card.role;
+            document.getElementById('input-year').value = card.year;
+            document.getElementById('input-rating').value = card.rating;
+            document.getElementById('input-evaluator').value = card.evaluator || 'Sam';
+            document.getElementById('input-notes').value = card.scoutingNotes || '';
+
+            document.getElementById('attr-ins').value = card.ins || 75;
+            document.getElementById('attr-out').value = card.out || 75;
+            document.getElementById('attr-ply').value = card.ply || 75;
+            document.getElementById('attr-def').value = card.def || 75;
+            document.getElementById('attr-ath').value = card.ath || 75;
+
+            updateLiveCard();
+            showToast('Editing player scouting card', 'info');
+        }
+
+        function duplicateCard(id) {
+            const card = savedCards.find(c => c.id === id);
+            if (!card) return;
+
+            const dup = {
+                ...card,
+                id: 'card-' + Date.now(),
+                name: card.name + ' (Copy)'
+            };
+
+            savedCards.unshift(dup);
+            saveCardsToStorage();
+            showToast('Player card duplicated!', 'success');
+        }
+
+        function deleteCard(id) {
+            savedCards = savedCards.filter(c => c.id !== id);
+            saveCardsToStorage();
+            showToast('Player scouting card removed', 'info');
+        }
+
+        // Attach live updates to all card form inputs
+        const liveInputIds = [
+            'input-name', 'input-nickname', 'input-team', 'input-category', 'input-country',
+            'input-role', 'input-year', 'input-rating', 'input-evaluator',
+            'attr-ins', 'attr-out', 'attr-ply', 'attr-def', 'attr-ath'
+        ];
+
+        liveInputIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', updateLiveCard);
+                el.addEventListener('change', updateLiveCard);
+            }
+        });
+
+        // Roster Search and Filter Listeners
+        ['rosterSearchInput', 'rosterCategoryFilter', 'rosterSortOption'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', renderRoster);
+                el.addEventListener('change', renderRoster);
+            }
+        });
+
+        // View Mode Toggle Handlers
+        document.getElementById('viewGridBtn')?.addEventListener('click', () => {
+            viewMode = 'grid';
+            document.getElementById('viewGridBtn').className = 'p-2 rounded-lg bg-slate-800 text-brand-400';
+            document.getElementById('viewListBtn').className = 'p-2 rounded-lg text-slate-400 hover:text-white';
+            renderProjects();
+        });
+
+        document.getElementById('viewListBtn')?.addEventListener('click', () => {
+            viewMode = 'list';
+            document.getElementById('viewListBtn').className = 'p-2 rounded-lg bg-slate-800 text-brand-400';
+            document.getElementById('viewGridBtn').className = 'p-2 rounded-lg text-slate-400 hover:text-white';
+            renderProjects();
+        });
+
+        document.getElementById('resetFiltersBtn')?.addEventListener('click', () => {
+            activeCategory = 'All';
+            if (document.getElementById('searchInput')) document.getElementById('searchInput').value = '';
+            renderCategories();
+            renderProjects();
+        });
+
+        // Canvas Basketball Arcade Game
+        const canvas = document.getElementById('hoopsCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+        let soundEnabled = true;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new AudioContext();
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'swish') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.15);
+                } else if (type === 'bounce') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.1);
+                } else if (type === 'score') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.08);
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.2);
+                }
+            } catch (e) {}
+        }
+
+        let gameState = 'START';
+        let score = 0;
+        let highScore = localStorage.getItem('hoops_high_score') || 0;
+        let timer = 45;
+        let streak = 0;
+        let timerInterval = null;
+        let ballSkin = 'classic';
+
+        if (document.getElementById('statHighScore')) {
+            document.getElementById('statHighScore').textContent = highScore;
+        }
+
+        let ball = {
+            x: 100,
+            y: 300,
+            vx: 0,
+            vy: 0,
+            radius: 18,
+            isDragging: false,
+            isShot: false,
+            trail: []
+        };
+
+        let hoop = {
+            x: 0,
+            y: 160,
+            width: 60,
+            height: 10,
+            netHeight: 40
+        };
+
+        let dragStart = { x: 0, y: 0 };
+        let currentMouse = { x: 0, y: 0 };
+
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+            resetBall();
+            hoop.x = canvas.width - 120;
+        }
+
+        function resetBall() {
+            ball.x = 80;
+            ball.y = canvas.height - 100;
+            ball.vx = 0;
+            ball.vy = 0;
+            ball.isShot = false;
+            ball.isDragging = false;
+            ball.trail = [];
+        }
+
+        function startHoopsGame() {
+            score = 0;
+            timer = 45;
+            streak = 0;
+            gameState = 'PLAYING';
+            
+            document.getElementById('gameScore').textContent = '0';
+            document.getElementById('gameTimer').textContent = timer + 's';
+            document.getElementById('gameStreak').textContent = '0x';
+            document.getElementById('gameOverlay').classList.add('hidden');
+
+            resetBall();
+
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timer--;
+                document.getElementById('gameTimer').textContent = timer + 's';
+                if (timer <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            clearInterval(timerInterval);
+            gameState = 'GAMEOVER';
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('hoops_high_score', highScore);
+                if (document.getElementById('statHighScore')) {
+                    document.getElementById('statHighScore').textContent = highScore;
+                }
+            }
+
+            document.getElementById('overlayTitle').textContent = 'TIME\'S UP!';
+            document.getElementById('overlaySub').innerHTML = `Final Score: <strong class="text-amber-400 font-mono text-lg">${score}</strong> | High Score: <strong class="text-emerald-400 font-mono text-lg">${highScore}</strong>`;
+            document.getElementById('startGameBtn').textContent = 'Play Again';
+            document.getElementById('gameOverlay').classList.remove('hidden');
+        }
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        function handlePointerDown(e) {
+            if (gameState !== 'PLAYING' || ball.isShot) return;
+            const pos = getPos(e);
+            const dist = Math.hypot(pos.x - ball.x, pos.y - ball.y);
+            if (dist < ball.radius * 2.5) {
+                ball.isDragging = true;
+                dragStart = pos;
+                currentMouse = pos;
+            }
+        }
+
+        function handlePointerMove(e) {
+            if (!ball.isDragging) return;
+            currentMouse = getPos(e);
+        }
+
+        function handlePointerUp() {
+            if (!ball.isDragging) return;
+            ball.isDragging = false;
+            
+            const dx = dragStart.x - currentMouse.x;
+            const dy = dragStart.y - currentMouse.y;
+            
+            if (Math.hypot(dx, dy) > 15) {
+                ball.vx = Math.min(Math.max(dx * 0.22, -25), 25);
+                ball.vy = Math.min(Math.max(dy * 0.22, -25), 25);
+                ball.isShot = true;
+                playSound('bounce');
+            }
+        }
+
+        canvas.addEventListener('mousedown', handlePointerDown);
+        canvas.addEventListener('mousemove', handlePointerMove);
+        window.addEventListener('mouseup', handlePointerUp);
+
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handlePointerDown(e); });
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); handlePointerMove(e); });
+        canvas.addEventListener('touchend', handlePointerUp);
+
+        function updatePhysics() {
+            if (ball.isShot) {
+                ball.trail.push({ x: ball.x, y: ball.y });
+                if (ball.trail.length > 10) ball.trail.shift();
+
+                ball.vx *= 0.99;
+                ball.vy += 0.42;
+
+                ball.x += ball.vx;
+                ball.y += ball.vy;
+
+                if (ball.x + ball.radius > canvas.width) {
+                    ball.x = canvas.width - ball.radius;
+                    ball.vx *= -0.7;
+                    playSound('bounce');
+                }
+                if (ball.x - ball.radius < 0) {
+                    ball.x = ball.radius;
+                    ball.vx *= -0.7;
+                    playSound('bounce');
+                }
+
+                if (ball.y - ball.radius > canvas.height) {
+                    streak = 0;
+                    document.getElementById('gameStreak').textContent = '0x';
+                    resetBall();
+                }
+
+                const hoopRimLeft = hoop.x;
+                const hoopRimRight = hoop.x + hoop.width;
+                const hoopRimY = hoop.y;
+
+                if (ball.y >= hoopRimY - 5 && ball.y <= hoopRimY + 15 &&
+                    ball.x > hoopRimLeft && ball.x < hoopRimRight && ball.vy > 0) {
+                    
+                    streak++;
+                    const ptsEarned = 2 * streak;
+                    score += ptsEarned;
+
+                    document.getElementById('gameScore').textContent = score;
+                    document.getElementById('gameStreak').textContent = streak + 'x';
+
+                    playSound('swish');
+                    playSound('score');
+                    showToast(`Bucket! +${ptsEarned} pts (${streak}x Streak!)`);
+
+                    resetBall();
+                }
+            }
+        }
+
+        function drawGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(canvas.width / 2, canvas.height, 120, Math.PI, 0);
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(hoop.x + hoop.width, hoop.y - 40, 10, 70);
+            
+            ctx.strokeStyle = '#f97316';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.moveTo(hoop.x, hoop.y);
+            ctx.lineTo(hoop.x + hoop.width, hoop.y);
+            ctx.stroke();
+
+            ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(hoop.x + 5, hoop.y);
+            ctx.lineTo(hoop.x + 15, hoop.y + hoop.netHeight);
+            ctx.lineTo(hoop.x + hoop.width - 15, hoop.y + hoop.netHeight);
+            ctx.lineTo(hoop.x + hoop.width - 5, hoop.y);
+            ctx.stroke();
+
+            if (ball.isDragging) {
+                const dx = dragStart.x - currentMouse.x;
+                const dy = dragStart.y - currentMouse.y;
+                
+                ctx.strokeStyle = 'rgba(249, 115, 22, 0.8)';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([6, 6]);
+                ctx.beginPath();
+                ctx.moveTo(ball.x, ball.y);
+                ctx.lineTo(ball.x + dx * 2, ball.y + dy * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            ball.trail.forEach((t, i) => {
+                ctx.fillStyle = ballSkin === 'fire' ? `rgba(239, 68, 68, ${i / 10})` : `rgba(249, 115, 22, ${i / 10})`;
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, ball.radius * (i / 10), 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            ctx.save();
+            ctx.translate(ball.x, ball.y);
+            
+            if (ballSkin === 'fire') {
+                ctx.fillStyle = '#ef4444';
+                ctx.shadowColor = '#f97316';
+                ctx.shadowBlur = 15;
+            } else {
+                ctx.fillStyle = '#ea580c';
+            }
+
+            ctx.beginPath();
+            ctx.arc(0, 0, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#111827';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, ball.radius, 0, Math.PI * 2);
+            ctx.moveTo(-ball.radius, 0);
+            ctx.lineTo(ball.radius, 0);
+            ctx.moveTo(0, -ball.radius);
+            ctx.lineTo(0, ball.radius);
+            ctx.stroke();
+
+            ctx.restore();
+
+            if (gameState === 'PLAYING') {
+                updatePhysics();
+            }
+
+            requestAnimationFrame(drawGame);
+        }
+
+        // Modal Controls for Game
+        function openGameModal() {
+            const gameModal = document.getElementById('gameModal');
+            gameModal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+            setTimeout(() => {
+                resizeCanvas();
+            }, 50);
+        }
+
+        function closeGameModal() {
+            const gameModal = document.getElementById('gameModal');
+            gameModal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+            if (timerInterval) clearInterval(timerInterval);
+            gameState = 'START';
+        }
+
+        document.getElementById('gameModal').addEventListener('click', (e) => {
+            if (e.target.id === 'gameModal') closeGameModal();
+        });
+
+        document.getElementById('myplayerModal').addEventListener('click', (e) => {
+            if (e.target.id === 'myplayerModal') closeMyPlayerModal();
+        });
+
+        // Game Controls
+        document.getElementById('startGameBtn').addEventListener('click', startHoopsGame);
+        document.getElementById('heroPlayGameBtn').addEventListener('click', openGameModal);
+        document.getElementById('navPlayGameBtn').addEventListener('click', openGameModal);
+
+        document.getElementById('soundToggleBtn').addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById('soundToggleBtn');
+            if (soundEnabled) {
+                btn.innerHTML = `<i id="soundIcon" class="fa-solid fa-volume-high text-emerald-400"></i> SFX Audio: On`;
+            } else {
+                btn.innerHTML = `<i id="soundIcon" class="fa-solid fa-volume-xmark text-slate-500"></i> SFX Audio: Off`;
+            }
+        });
+
+        document.getElementById('skinToggleBtn').addEventListener('click', () => {
+            ballSkin = ballSkin === 'classic' ? 'fire' : 'classic';
+            document.getElementById('skinToggleBtn').innerHTML = `<i class="fa-solid fa-fire text-rose-500"></i> Skin: ${ballSkin === 'classic' ? 'Classic Ball' : 'Fireball'}`;
+            showToast(`Switched ball skin to ${ballSkin.toUpperCase()}`);
+        });
+
+        // Mobile Navigation Toggle
+        document.getElementById('mobileMenuBtn').addEventListener('click', () => {
+            document.getElementById('mobileMenu').classList.toggle('hidden');
+        });
+
+        // AI Assistant Integration
+        const aiModal = document.getElementById('aiModal');
+        document.getElementById('aiBotToggleBtn').addEventListener('click', openAiModal);
+        document.getElementById('closeAiModal').addEventListener('click', () => aiModal.classList.add('hidden'));
+
+        document.getElementById('sendAiBtn').addEventListener('click', () => {
             const input = document.getElementById('aiInput');
-            const query = input.value.trim();
-            if (!query) return;
+            const val = input.value.trim();
+            if (!val) return;
 
-            const chat = document.getElementById('aiChatMessages');
-            chat.innerHTML += `<div class="flex justify-end"><div class="p-2.5 rounded-xl bg-brand-600 text-white max-w-[85%]">${query}</div></div>`;
+            const chatBox = document.getElementById('aiChatBox');
+            chatBox.innerHTML += `<div class="bg-brand-600/30 text-right p-2.5 rounded-xl border border-brand-500/30 text-white font-medium ml-8">${val}</div>`;
             input.value = '';
 
             setTimeout(() => {
-                let response = "Sam created Basketball Chaos using pure HTML5 Canvas trajectory math in Mr. Smith's Building With AI class!";
-                if (query.toLowerCase().includes('skill') || query.toLowerCase().includes('stack')) {
-                    response = "Sam's tech stack includes HTML5 Canvas, Web Audio API, Tailwind CSS, JavaScript ES6+, and AI-assisted web workflows!";
-                } else if (query.toLowerCase().includes('download') || query.toLowerCase().includes('offline')) {
-                    response = "You can click the 'Download Game' button inside Basketball Chaos to save a 100% standalone single HTML file to play offline!";
-                } else if (query.toLowerCase().includes('who') || query.toLowerCase().includes('sam') || query.toLowerCase().includes('class') || query.toLowerCase().includes('smith')) {
-                    response = "Sam is a high school basketball player learning web development in Mr. Smith's 'Building With AI' class!";
+                let reply = "I'm Sam's portfolio AI assistant! Sam built this entire web app using HTML5, Tailwind CSS, JavaScript, and Canvas Physics in Mr. Smith's class!";
+                if (val.toLowerCase().includes('game') || val.toLowerCase().includes('basketball')) {
+                    reply = "Basketball Chaos Arcade features dynamic trajectory physics, gravity calculation, streak multiplier scoring, and pure synthetic Web Audio API SFX!";
+                } else if (val.toLowerCase().includes('card') || val.toLowerCase().includes('hoops') || val.toLowerCase().includes('myplayer')) {
+                    reply = "MYPLAYER Hoops allows you to design custom scouting cards with 5-axis SVG attribute radar charts, FIBA flags, archetypes, and local storage persistence!";
                 }
-                chat.innerHTML += `<div class="flex gap-2 items-start"><div class="w-6 h-6 rounded bg-brand-500/20 text-brand-400 flex items-center justify-center text-[10px]"><i class="fa-solid fa-bot"></i></div><div class="p-3 rounded-xl bg-slate-800 text-slate-200 max-w-[85%]">${response}</div></div>`;
-                chat.scrollTop = chat.scrollHeight;
+                chatBox.innerHTML += `<div class="bg-slate-900 p-2.5 rounded-xl border border-slate-800 text-slate-300 mr-8">🤖 ${reply}</div>`;
+                chatBox.scrollTop = chatBox.scrollHeight;
             }, 500);
-        };
+        });
 
-        // Ambient Background Particles
-        const bgCanvas = document.getElementById('bgCanvas');
-        const bgCtx = bgCanvas.getContext('2d');
-        let bgParticles = [];
+        // Add Creation Modal Controls
+        const projModal = document.getElementById('addProjectModal');
+        document.getElementById('addProjectBtn').addEventListener('click', () => projModal.classList.remove('hidden'));
+        document.getElementById('closeProjectModal').addEventListener('click', () => projModal.classList.add('hidden'));
 
-        function resizeBgCanvas() {
-            bgCanvas.width = window.innerWidth;
-            bgCanvas.height = window.innerHeight;
-            bgParticles = [];
-            for (let i = 0; i < Math.floor(window.innerWidth / 25); i++) {
-                bgParticles.push({
-                    x: Math.random() * bgCanvas.width,
-                    y: Math.random() * bgCanvas.height,
-                    radius: Math.random() * 1.5 + 0.5,
-                    vx: (Math.random() - 0.5) * 0.3,
-                    vy: (Math.random() - 0.5) * 0.3
-                });
-            }
-        }
+        document.getElementById('newProjectForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const newProj = {
+                id: 'proj-' + Date.now(),
+                title: document.getElementById('projTitle').value,
+                category: document.getElementById('projCategory').value,
+                description: document.getElementById('projDesc').value,
+                tags: document.getElementById('projTags').value.split(',').map(t => t.trim()).filter(Boolean),
+                icon: 'fa-code',
+                color: 'from-brand-500 to-purple-500',
+                action: ''
+            };
 
-        function drawBgParticles() {
-            bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
-            bgCtx.fillStyle = 'rgba(129, 140, 248, 0.4)';
-            bgParticles.forEach(p => {
-                p.x += p.vx; p.y += p.vy;
-                if (p.x < 0) p.x = bgCanvas.width;
-                if (p.x > bgCanvas.width) p.x = 0;
-                if (p.y < 0) p.y = bgCanvas.height;
-                if (p.y > bgCanvas.height) p.y = 0;
-                bgCtx.beginPath();
-                bgCtx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                bgCtx.fill();
-            });
-            requestAnimationFrame(drawBgParticles);
-        }
-
-        // Window Init
-        window.onload = function() {
-            resizeBgCanvas();
-            drawBgParticles();
-            renderCategoryFilters();
+            projects.unshift(newProj);
+            localStorage.setItem('sams_devhub_projects', JSON.stringify(projects));
+            renderCategories();
             renderProjects();
+            projModal.classList.add('hidden');
+            document.getElementById('newProjectForm').reset();
+            showToast('New creation added to portfolio!');
+        });
 
-            if (window.location.hash === '#game') {
-                openGameModal(false);
-            }
+        document.getElementById('searchInput')?.addEventListener('input', renderProjects);
 
-            window.addEventListener('resize', () => {
-                resizeBgCanvas();
-                if (gameInstance) gameInstance.resize();
-            });
+        window.onload = function () {
+            resizeCanvas();
+            renderCategories();
+            renderProjects();
+            updateLiveCard();
+            renderRoster();
+            drawGame();
         };
+
+        window.addEventListener('resize', resizeCanvas);
     </script>
-<p>
-  <a href="basketball-chaos-game/#projects">🏀 Basketball Chaos Game</a>
-</p>
-    <script>
-  window.addEventListener('DOMContentLoaded', () => {
-    if (window.location.hash === '#projects') {
-      const projectsSection = document.getElementById('projects');
-      if (projectsSection) {
-        projectsSection.scrollIntoView({ behavior: 'smooth' });
-      }
-      if (typeof openGameModal === 'function') {
-        openGameModal();
-      }
-    }
-  });
-</script>
 </body>
 </html>
