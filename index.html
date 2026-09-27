@@ -1745,12 +1745,68 @@
         window.addEventListener('resize', resizeCanvas);
     </script>
     <!-- Supabase Library & Config -->
+    <!-- 1. Supabase CDN & Initialization -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         const SUPABASE_URL = 'https://pohsheiajtqgkdqaetey.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvaHNoZWlhanRxZ2tkcWFldGV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA0Nzc2NjQsImV4cCI6MjEwNjA1MzY2NH0.vEzfqA0yrHzKIXiBCHZIxXhHDAepMgiemAdobXaxYVg';
 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    </script>
+
+    <!-- 2. Your App Script -->
+    <script>
+        document.getElementById('searchInput')?.addEventListener('input', renderProjects);
+
+        // 1. Save player to Supabase on form submit
+        document.querySelector('form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const playerData = {
+                name: document.getElementById('cardName')?.innerText || 'New Player',
+                team: document.getElementById('cardTeam')?.innerText || 'Free Agent',
+                role: document.getElementById('cardRole')?.innerText || 'PG',
+                year: parseInt(document.getElementById('input-year')?.value) || 2026
+            };
+
+            const { data, error } = await supabaseClient
+                .from('player_cards')
+                .insert([playerData]);
+
+            if (error) {
+                console.error('Supabase Insert Error:', error.message);
+                alert('Error saving to database: ' + error.message);
+            } else {
+                alert('Player saved to database successfully!');
+                if (typeof closeMyPlayerModal === 'function') closeMyPlayerModal();
+                fetchAndRenderRoster();
+            }
+        });
+
+        // 2. Fetch all players from Supabase
+        async function fetchAndRenderRoster() {
+            const { data: players, error } = await supabaseClient
+                .from('player_cards')
+                .select('*');
+
+            if (error) {
+                console.error('Supabase Fetch Error:', error.message);
+                return;
+            }
+
+            console.log('Loaded players from database:', players);
+        }
+
+        window.onload = function () {
+            resizeCanvas();
+            renderCategories();
+            renderProjects();
+            updateLiveCard();
+            fetchAndRenderRoster();
+            drawGame();
+        };
+
+        window.addEventListener('resize', resizeCanvas);
     </script>
 </body>
 </html>
