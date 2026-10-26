@@ -22,12 +22,11 @@ const authCard = document.querySelector(".auth-card");
 
 let mode = "login";
 let busy = false;
-let pendingUsername = "";
 let setupUser = null;
 
-function showMessage(text, error = false) {
+function showMessage(text, isError = false) {
   message.textContent = text;
-  message.style.color = error ? "#ff7777" : "#8fe3a1";
+  message.style.color = isError ? "#ff7777" : "#8fe3a1";
 }
 
 function setBusy(value) {
@@ -35,6 +34,7 @@ function setBusy(value) {
   submitButton.disabled = value;
   githubButton.disabled = value;
   switchButton.disabled = value;
+
   submitButton.textContent = value
     ? "Please wait..."
     : mode === "signup"
@@ -46,15 +46,17 @@ function setBusy(value) {
 
 function setMode(nextMode) {
   mode = nextMode;
-  setupUser = null;
 
   authForm.hidden = false;
   githubButton.hidden = false;
   switchText.hidden = false;
   switchButton.hidden = false;
 
-  usernameField.hidden = mode !== "signup" && mode !== "username";
-  usernameInput.required = mode === "signup" || mode === "username";
+  usernameField.hidden =
+    mode !== "signup" && mode !== "username";
+
+  usernameInput.required =
+    mode === "signup" || mode === "username";
 
   formTitle.textContent =
     mode === "signup" ? "Create your account" :
@@ -66,22 +68,21 @@ function setMode(nextMode) {
     mode === "username" ? "One last step to set up your profile." :
     "Sign in to get back to your playbook.";
 
-  submitButton.textContent =
-    mode === "signup" ? "Create account" :
-    mode === "username" ? "Save username" :
-    "Sign in";
-
   switchText.textContent =
-    mode === "signup" ? "Already have an account?" : "New to Identity?";
+    mode === "signup" || mode === "username"
+      ? "Already have an account?"
+      : "New to Identity?";
 
   switchButton.textContent =
-    mode === "signup" || mode === "username" ? "Sign in" : "Create account";
+    mode === "signup" || mode === "username"
+      ? "Sign in"
+      : "Create account";
 
   passwordInput.autocomplete =
     mode === "signup" ? "new-password" : "current-password";
 
-  showMessage("");
   setBusy(false);
+  showMessage("");
 }
 
 function validUsername(value) {
@@ -89,23 +90,29 @@ function validUsername(value) {
 }
 
 async function saveUsername(user, username) {
-  const clean = username.trim();
+  const cleanUsername = username.trim();
 
   const { error } = await supabaseClient
     .from("identity_profiles")
     .upsert(
-      { id: user.id, username: clean },
+      {
+        id: user.id,
+        username: cleanUsername
+      },
       { onConflict: "id" }
     );
 
   if (error) {
     if (error.code === "23505") {
-      throw new Error("That username is taken. Please choose another.");
+      throw new Error(
+        "That username is already taken. Please choose another."
+      );
     }
+
     throw error;
   }
 
-  return clean;
+  return cleanUsername;
 }
 
 async function showDashboard(user, username) {
@@ -115,30 +122,38 @@ async function showDashboard(user, username) {
   switchButton.hidden = true;
 
   formTitle.textContent = "You're signed in!";
+
   formSubtitle.textContent = username
     ? `Welcome, ${username}. Your playbook is ready to build.`
     : "Your account is connected.";
 
-  showMessage("Next, we'll add saved plays and file uploads.");
+  showMessage(
+    "Your account is connected. Next, we'll add saved plays and uploads."
+  );
 
-  let signOut = $("signOutButton");
+  let signOutButton = $("signOutButton");
 
-  if (!signOut) {
-    signOut = document.createElement("button");
-    signOut.id = "signOutButton";
-    signOut.className = "secondary";
-    signOut.textContent = "Sign out";
-    signOut.type = "button";
-    authCard.appendChild(signOut);
+  if (!signOutButton) {
+    signOutButton = document.createElement("button");
+    signOutButton.id = "signOutButton";
+    signOutButton.className = "secondary";
+    signOutButton.type = "button";
+    signOutButton.textContent = "Sign out";
 
-    signOut.addEventListener("click", async () => {
+    authCard.appendChild(signOutButton);
+
+    signOutButton.addEventListener("click", async () => {
+      signOutButton.disabled = true;
+
       const { error } = await supabaseClient.auth.signOut();
 
       if (error) {
         showMessage(error.message, true);
-      } else {
-        window.location.reload();
+        signOutButton.disabled = false;
+        return;
       }
+
+      window.location.reload();
     });
   }
 }
@@ -157,9 +172,10 @@ async function handleSignedIn(user) {
     return;
   }
 
-  if (pendingUsername) {
-    const username = await saveUsername(user, pendingUsername);
-    pendingUsername = "";
+  const savedUsername = user.user_metadata?.playbook_username;
+
+  if (savedUsername) {
+    const username = await saveUsername(user, savedUsername);
     await showDashboard(user, username);
     return;
   }
@@ -171,6 +187,7 @@ async function handleSignedIn(user) {
 
 authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+
   if (busy) return;
 
   setBusy(true);
@@ -180,7 +197,7 @@ authForm.addEventListener("submit", async (event) => {
     const email = emailInput.value.trim();
     const password = passwordInput.value;
 
-    if (mode === "signup" || mode === "username") {
+    if (mode === "signup") {
       const username = usernameInput.value.trim();
 
       if (!validUsername(username)) {
@@ -189,25 +206,15 @@ authForm.addEventListener("submit", async (event) => {
         );
       }
 
-      if (mode === "username") {
-        if (!setupUser) {
-          throw new Error("Your session expired. Please sign in again.");
-        }
-
-        const saved = await saveUsername(setupUser, username);
-        await showDashboard(setupUser, saved);
-        showMessage("Username saved!");
-        return;
-      }
-
-      pendingUsername = username;
-
       const { data, error } = await supabaseClient.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: window.location.origin + window.location.pathname,
-          data: { playbook_username: username }
+          emailRedirectTo:
+            window.location.origin + window.location.pathname,
+          data: {
+            playbook_username: username
+          }
         }
       });
 
@@ -218,21 +225,48 @@ authForm.addEventListener("submit", async (event) => {
       } else {
         setMode("login");
         showMessage(
-          "Account created. Confirm your email, then sign in with the same email and password. Your username choice will be used to finish setup in this browser."
+          "Account created! Confirm your email, then sign in. Your username will be retrieved from your account."
         );
       }
+
       return;
     }
 
-    const { data, error } = await supabaseClient.auth.signInWithPassword({
-      email,
-      password
-    });
+    if (mode === "username") {
+      if (!setupUser) {
+        throw new Error(
+          "Your session has expired. Please sign in again."
+        );
+      }
+
+      const username = usernameInput.value.trim();
+
+      if (!validUsername(username)) {
+        throw new Error(
+          "Use 3–20 characters: letters, numbers, or underscores."
+        );
+      }
+
+      const savedUsername = await saveUsername(setupUser, username);
+      await showDashboard(setupUser, savedUsername);
+      showMessage("Username saved!");
+      return;
+    }
+
+    const { data, error } =
+      await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
 
     if (error) throw error;
+
     await handleSignedIn(data.user);
   } catch (error) {
-    showMessage(error.message || "Something went wrong. Please try again.", true);
+    showMessage(
+      error.message || "Something went wrong. Please try again.",
+      true
+    );
   } finally {
     setBusy(false);
   }
@@ -240,6 +274,15 @@ authForm.addEventListener("submit", async (event) => {
 
 switchButton.addEventListener("click", () => {
   if (busy) return;
+
+  if (mode === "username" && setupUser) {
+    showMessage(
+      "Please finish choosing your username before switching forms.",
+      true
+    );
+    return;
+  }
+
   setMode(mode === "login" ? "signup" : "login");
 });
 
@@ -253,13 +296,17 @@ githubButton.addEventListener("click", async () => {
     const { error } = await supabaseClient.auth.signInWithOAuth({
       provider: "github",
       options: {
-        redirectTo: window.location.origin + window.location.pathname
+        redirectTo:
+          window.location.origin + window.location.pathname
       }
     });
 
     if (error) throw error;
   } catch (error) {
-    showMessage(error.message || "GitHub sign-in could not start.", true);
+    showMessage(
+      error.message || "GitHub sign-in could not start.",
+      true
+    );
     setBusy(false);
   }
 });
@@ -267,17 +314,21 @@ githubButton.addEventListener("click", async () => {
 async function initializeApp() {
   try {
     const { data, error } = await supabaseClient.auth.getSession();
+
     if (error) throw error;
 
     if (data.session) {
       await handleSignedIn(data.session.user);
     }
   } catch (error) {
-    showMessage(error.message || "Could not load your session.", true);
+    showMessage(
+      error.message || "Could not load your session.",
+      true
+    );
   }
 }
 
-supabaseClient.auth.onAuthStateChange((event, session) => {
+supabaseClient.auth.onAuthStateChange((event) => {
   if (event === "SIGNED_OUT") {
     window.location.reload();
   }
