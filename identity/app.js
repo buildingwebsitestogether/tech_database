@@ -20,6 +20,9 @@ const switchText = $("switchText");
 const message = $("message");
 const authCard = document.querySelector(".auth-card");
 
+const FILE_BUCKET = "identity-playbook-files";
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
 let mode = "login";
 let busy = false;
 let setupUser = null;
@@ -142,6 +145,30 @@ function showDashboard() {
         <button id="dashboardSignOut" class="secondary" type="button">Sign out</button>
       </div>
 
+      <section id="filesSection">
+        <h2>My Files</h2>
+        <p class="files-help">
+          Store images and PDFs for your basketball playbook.
+          Maximum size: 10 MB per file.
+        </p>
+
+        <form id="fileUploadForm">
+          <label for="fileInput">Choose an image or PDF</label>
+          <input
+            id="fileInput"
+            type="file"
+            accept="image/*,application/pdf"
+            required
+          >
+          <button id="uploadFileButton" type="submit">Upload File</button>
+          <p id="fileMessage" role="status" aria-live="polite"></p>
+        </form>
+
+        <div id="filesList">
+          <p>Loading your files...</p>
+        </div>
+      </section>
+
       <section id="playEditor" hidden>
         <h2 id="editorTitle">Create a play</h2>
         <form id="playForm">
@@ -187,6 +214,7 @@ function showDashboard() {
     .dashboard button { cursor: pointer; padding: 12px 16px; border: 0; border-radius: 8px; font-weight: bold; }
     .dashboard button:not(.secondary) { background: #b9f27c; color: #141414; }
     .dashboard .secondary { background: #303030; color: white; border: 1px solid #555; }
+    .dashboard button:disabled { opacity: .6; cursor: wait; }
     .dashboard label { display: block; margin-top: 14px; margin-bottom: 6px; }
     .dashboard input, .dashboard select, .dashboard textarea { box-sizing: border-box; width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #555; background: #171717; color: white; font: inherit; }
     .dashboard #playEditor { margin-top: 24px; padding: 18px; background: #191919; border-radius: 12px; }
@@ -195,11 +223,44 @@ function showDashboard() {
     .play-card p { white-space: pre-wrap; overflow-wrap: anywhere; color: #ddd; }
     .play-card .play-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .play-type { color: #b9f27c; text-transform: uppercase; font-size: .75rem; letter-spacing: 1px; }
-    @media (max-width: 480px) { .dashboard-stats { grid-template-columns: 1fr; } }
+
+    #filesSection {
+      margin-top: 28px;
+      padding: 18px;
+      background: #191919;
+      border: 1px solid #383838;
+      border-radius: 12px;
+    }
+    .files-help, .file-size { color: #b9b9b9; }
+    #filesList { margin-top: 18px; }
+    .file-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 10px;
+      padding: 14px;
+      background: #202020;
+      border: 1px solid #383838;
+      border-radius: 10px;
+    }
+    .file-name {
+      overflow-wrap: anywhere;
+      flex: 1;
+      min-width: 120px;
+    }
+    .file-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .file-size { font-size: .85rem; }
+    #fileMessage { overflow-wrap: anywhere; }
+
+    @media (max-width: 480px) {
+      .dashboard-stats { grid-template-columns: 1fr; }
+    }
   `;
   document.head.appendChild(style);
 
-  // Connect the interactive court designer.
+  // Initialize the existing interactive court designer.
   if (typeof window.initCourtDesigner === "function") {
     window.initCourtDesigner();
   }
@@ -218,6 +279,9 @@ function showDashboard() {
 
   $("playForm").addEventListener("submit", savePlay);
 
+  $("fileUploadForm").addEventListener("submit", uploadFile);
+  $("filesList").addEventListener("click", handleFileAction);
+
   $("dashboardSignOut").addEventListener("click", async () => {
     const { error } = await supabaseClient.auth.signOut();
 
@@ -229,6 +293,7 @@ function showDashboard() {
   });
 
   loadPlays();
+  loadUserFiles();
 }
 
 function escapeHTML(value) {
@@ -240,6 +305,231 @@ function escapeHTML(value) {
     "'": "&#39;"
   })[char]);
 }
+
+// =============================
+// PRIVATE FILE MANAGER
+// =============================
+
+function setFileMessage(text, isError = false) {
+  const element = $("fileMessage");
+  if (!element) return;
+
+  element.textContent = text;
+  element.style.color = isError ? "#ff7777" : "#8fe3a1";
+}
+
+function formatFileSize(bytes) {
+  if (bytes < 1024 * 1024) {
+    return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  }
+
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function safeFileName(name) {
+  const baseName = name.split(/[\\/]/).pop();
+
+  return baseName
+    .normalize("NFKC")
+    .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .replace(/^\.+/, "")
+    .slice(0, 150) || "upload";
+}
+
+function isAllowedFile(file) {
+  return (
+    file.type === "application/pdf" ||
+    file.type.startsWith("image/")
+  );
+}
+
+async function loadUserFiles() {
+  const list = $("filesList");
+  if (!list || !currentUser) return;
+
+  list.textContent = "Loading your files...";
+
+  try {
+    const { data, error } = await supabaseClient.storage
+      .from(FILE_BUCKET)
+      .list(currentUser.id, {
+        limit: 100,
+        sortBy: { column: "created_at", order: "desc" }
+      });
+
+    if (error) throw error;
+
+    const files = (data || []).filter(
+      (file) => file.name && file.name !== ".emptyFolderPlaceholder"
+    );
+
+    if (!files.length) {
+      list.innerHTML = "<p>No files yet. Upload an image or PDF above.</p>";
+      return;
+    }
+
+    list.innerHTML = files.map((file) => {
+      const path = `${currentUser.id}/${file.name}`;
+      const size = Number(file.metadata?.size || 0);
+      const originalName = file.name.replace(/^\d+-[a-z0-9]+-/i, "");
+
+      return `
+        <article class="file-card">
+          <div class="file-name">
+            <strong>${escapeHTML(originalName)}</strong>
+            <div class="file-size">${formatFileSize(size)}</div>
+          </div>
+          <div class="file-actions">
+            <button type="button"
+              data-file-action="download"
+              data-file-path="${escapeHTML(path)}">
+              Download
+            </button>
+            <button type="button" class="secondary"
+              data-file-action="delete"
+              data-file-path="${escapeHTML(path)}">
+              Delete
+            </button>
+          </div>
+        </article>
+      `;
+    }).join("");
+  } catch (error) {
+    list.textContent = `Could not load files: ${error.message}`;
+  }
+}
+
+async function uploadFile(event) {
+  event.preventDefault();
+
+  if (!currentUser) {
+    setFileMessage("Please sign in again.", true);
+    return;
+  }
+
+  const input = $("fileInput");
+  const button = $("uploadFileButton");
+  const file = input.files?.[0];
+
+  if (!file) {
+    setFileMessage("Choose a file first.", true);
+    return;
+  }
+
+  if (!isAllowedFile(file)) {
+    setFileMessage("Only image and PDF files are allowed.", true);
+    return;
+  }
+
+  if (file.size > MAX_FILE_SIZE) {
+    setFileMessage("The file must be 10 MB or smaller.", true);
+    return;
+  }
+
+  if (file.size === 0) {
+    setFileMessage("This file is empty.", true);
+    return;
+  }
+
+  button.disabled = true;
+  setFileMessage("Uploading...");
+
+  try {
+    const uniqueId =
+      globalThis.crypto?.randomUUID?.() ||
+      Math.random().toString(36).slice(2);
+
+    const storedName =
+      `${Date.now()}-${uniqueId}-${safeFileName(file.name)}`;
+
+    const path = `${currentUser.id}/${storedName}`;
+
+    const { error } = await supabaseClient.storage
+      .from(FILE_BUCKET)
+      .upload(path, file, {
+        upsert: false,
+        contentType: file.type
+      });
+
+    if (error) throw error;
+
+    input.value = "";
+    setFileMessage("File uploaded successfully.");
+    await loadUserFiles();
+  } catch (error) {
+    setFileMessage(`Upload failed: ${error.message}`, true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function handleFileAction(event) {
+  const button = event.target.closest("button[data-file-action]");
+  if (!button || !currentUser) return;
+
+  const action = button.dataset.fileAction;
+  const path = button.dataset.filePath;
+
+  // Restrict actions to the signed-in user's folder.
+  if (!path || !path.startsWith(`${currentUser.id}/`)) {
+    setFileMessage("Invalid file path.", true);
+    return;
+  }
+
+  button.disabled = true;
+
+  try {
+    if (action === "download") {
+      setFileMessage("Preparing download...");
+
+      const { data, error } = await supabaseClient.storage
+        .from(FILE_BUCKET)
+        .download(path);
+
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = path.split("/").pop().replace(
+        /^\d+-[a-z0-9]+-/i, ""
+      );
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      setFileMessage("Download started.");
+    } else if (action === "delete") {
+      const fileName = path.split("/").pop();
+
+      if (!confirm(`Delete "${fileName}"? This cannot be undone.`)) {
+        return;
+      }
+
+      setFileMessage("Deleting file...");
+
+      const { error } = await supabaseClient.storage
+        .from(FILE_BUCKET)
+        .remove([path]);
+
+      if (error) throw error;
+
+      setFileMessage("File deleted.");
+      await loadUserFiles();
+    }
+  } catch (error) {
+    setFileMessage(`File action failed: ${error.message}`, true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+// =============================
+// EXISTING PLAYBOOK FUNCTIONS
+// =============================
 
 function openEditor(play = null) {
   $("playEditor").hidden = false;
