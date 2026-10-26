@@ -1,4 +1,4 @@
-
+```javascript
 const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY
@@ -39,6 +39,15 @@ function validUsername(value) {
   return /^[A-Za-z0-9_]{3,20}$/.test(value);
 }
 
+function isEmailUser(user) {
+  const providers = user?.app_metadata?.providers || [];
+
+  return (
+    user?.app_metadata?.provider === "email" ||
+    providers.includes("email")
+  );
+}
+
 function setBusy(value) {
   busy = value;
   submitButton.disabled = value;
@@ -58,15 +67,18 @@ function setMode(nextMode) {
   mode = nextMode;
 
   authForm.hidden = false;
-  githubButton.hidden = false;
-  switchText.hidden = false;
-  switchButton.hidden = false;
+  githubButton.hidden = mode === "username";
+  switchText.hidden = mode === "username";
+  switchButton.hidden = mode === "username";
 
   usernameField.hidden =
     mode !== "signup" && mode !== "username";
 
   usernameInput.required =
     mode === "signup" || mode === "username";
+
+  emailInput.required = mode !== "username";
+  passwordInput.required = mode !== "username";
 
   formTitle.textContent =
     mode === "signup" ? "Create your account" :
@@ -75,18 +87,16 @@ function setMode(nextMode) {
 
   formSubtitle.textContent =
     mode === "signup" ? "Choose a username to start your playbook." :
-    mode === "username" ? "One last step to set up your profile." :
+    mode === "username" ? "Choose a unique username to finish setting up." :
     "Sign in to get back to your playbook.";
 
   switchText.textContent =
-    mode === "signup" || mode === "username"
+    mode === "signup"
       ? "Already have an account?"
       : "New to Identity?";
 
   switchButton.textContent =
-    mode === "signup" || mode === "username"
-      ? "Sign in"
-      : "Create account";
+    mode === "signup" ? "Sign in" : "Create account";
 
   passwordInput.autocomplete =
     mode === "signup" ? "new-password" : "current-password";
@@ -98,6 +108,12 @@ function setMode(nextMode) {
 async function saveUsername(user, username) {
   const clean = username.trim();
 
+  if (!validUsername(clean)) {
+    throw new Error(
+      "Use 3–20 characters: letters, numbers, or underscores."
+    );
+  }
+
   const { error } = await supabaseClient
     .from("identity_profiles")
     .upsert(
@@ -107,8 +123,11 @@ async function saveUsername(user, username) {
 
   if (error) {
     if (error.code === "23505") {
-      throw new Error("That username is already taken.");
+      throw new Error(
+        "That username is already taken. Please choose another."
+      );
     }
+
     throw error;
   }
 
@@ -142,7 +161,14 @@ function showDashboard() {
       <div class="dashboard-actions">
         <button id="showPlaysButton" type="button">My Plays</button>
         <button id="newPlayButton" type="button">+ Create a Play</button>
-        <button id="dashboardSignOut" class="secondary" type="button">Sign out</button>
+        ${
+          isEmailUser(currentUser)
+            ? '<button id="changePasswordButton" class="secondary" type="button">Change password</button>'
+            : ""
+        }
+        <button id="dashboardSignOut" class="secondary" type="button">
+          Sign out
+        </button>
       </div>
 
       <section id="filesSection">
@@ -258,9 +284,9 @@ function showDashboard() {
       .dashboard-stats { grid-template-columns: 1fr; }
     }
   `;
+
   document.head.appendChild(style);
 
-  // Initialize the existing interactive court designer.
   if (typeof window.initCourtDesigner === "function") {
     window.initCourtDesigner();
   }
@@ -271,6 +297,14 @@ function showDashboard() {
 
   $("newPlayButton").addEventListener("click", () => openEditor());
 
+  const changePasswordButton = $("changePasswordButton");
+  if (changePasswordButton) {
+    changePasswordButton.addEventListener(
+      "click",
+      showChangePasswordPage
+    );
+  }
+
   $("cancelPlayButton").addEventListener("click", () => {
     $("playForm").reset();
     $("playEditor").hidden = true;
@@ -278,7 +312,6 @@ function showDashboard() {
   });
 
   $("playForm").addEventListener("submit", savePlay);
-
   $("fileUploadForm").addEventListener("submit", uploadFile);
   $("filesList").addEventListener("click", handleFileAction);
 
@@ -294,6 +327,89 @@ function showDashboard() {
 
   loadPlays();
   loadUserFiles();
+}
+
+// =============================
+// CHANGE PASSWORD PAGE
+// =============================
+
+function showChangePasswordPage() {
+  if (!currentUser || !isEmailUser(currentUser)) {
+    showDashboard();
+    return;
+  }
+
+  authCard.innerHTML = `
+    <div class="dashboard">
+      <p class="eyebrow">IDENTITY PLAYBOOK</p>
+      <h1>Change password</h1>
+      <p class="dashboard-intro">
+        Choose a new password for your account.
+      </p>
+
+      <form id="changePasswordForm">
+        <label for="newPassword">New password</label>
+        <input id="newPassword" type="password"
+          autocomplete="new-password" minlength="8"
+          required placeholder="At least 8 characters">
+
+        <label for="confirmPassword">Confirm new password</label>
+        <input id="confirmPassword" type="password"
+          autocomplete="new-password" minlength="8"
+          required placeholder="Enter it again">
+
+        <button id="updatePasswordButton" type="submit">
+          Update password
+        </button>
+        <button id="backToDashboard" class="secondary"
+          type="button">Back to dashboard</button>
+
+        <p id="passwordMessage" role="status"
+          aria-live="polite"></p>
+      </form>
+    </div>
+  `;
+
+  $("backToDashboard").addEventListener("click", showDashboard);
+
+  $("changePasswordForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const password = $("newPassword").value;
+    const confirmation = $("confirmPassword").value;
+    const passwordMessage = $("passwordMessage");
+    const updateButton = $("updatePasswordButton");
+
+    if (password.length < 8) {
+      passwordMessage.textContent =
+        "Your password must be at least 8 characters.";
+      return;
+    }
+
+    if (password !== confirmation) {
+      passwordMessage.textContent = "Passwords do not match.";
+      return;
+    }
+
+    updateButton.disabled = true;
+    passwordMessage.textContent = "Updating password...";
+
+    try {
+      const { error } = await supabaseClient.auth.updateUser({
+        password
+      });
+
+      if (error) throw error;
+
+      $("changePasswordForm").reset();
+      passwordMessage.textContent = "Password updated successfully.";
+    } catch (error) {
+      passwordMessage.textContent =
+        error.message || "Could not update your password.";
+    } finally {
+      updateButton.disabled = false;
+    }
+  });
 }
 
 function escapeHTML(value) {
@@ -470,7 +586,6 @@ async function handleFileAction(event) {
   const action = button.dataset.fileAction;
   const path = button.dataset.filePath;
 
-  // Restrict actions to the signed-in user's folder.
   if (!path || !path.startsWith(`${currentUser.id}/`)) {
     setFileMessage("Invalid file path.", true);
     return;
@@ -528,7 +643,7 @@ async function handleFileAction(event) {
 }
 
 // =============================
-// EXISTING PLAYBOOK FUNCTIONS
+// PLAYBOOK FUNCTIONS
 // =============================
 
 function openEditor(play = null) {
@@ -556,6 +671,8 @@ function openEditor(play = null) {
 
 async function loadPlays() {
   const list = $("playsList");
+  if (!list || !currentUser) return;
+
   list.innerHTML = "<p>Loading your plays...</p>";
 
   const { data, error } = await supabaseClient
@@ -680,6 +797,23 @@ async function deletePlay(id) {
   await loadPlays();
 }
 
+// =============================
+// SIGN-IN AND USERNAME SETUP
+// =============================
+
+function startUsernameSetup(user, suggestedUsername = "") {
+  setupUser = user;
+  setMode("username");
+
+  if (suggestedUsername && validUsername(suggestedUsername)) {
+    usernameInput.value = suggestedUsername;
+  } else {
+    usernameInput.value = "";
+  }
+
+  showMessage("Choose a unique username to finish setting up your account.");
+}
+
 async function handleSignedIn(user) {
   currentUser = user;
 
@@ -691,23 +825,37 @@ async function handleSignedIn(user) {
 
   if (error) throw error;
 
-  if (profile) {
+  if (profile?.username) {
     currentUsername = profile.username;
+    setupUser = null;
     showDashboard();
     return;
   }
 
-  const username = user.user_metadata?.playbook_username;
+  const suggestedUsername = user.user_metadata?.playbook_username || "";
 
-  if (username) {
-    currentUsername = await saveUsername(user, username);
-    showDashboard();
-    return;
+  if (suggestedUsername) {
+    try {
+      currentUsername = await saveUsername(user, suggestedUsername);
+      setupUser = null;
+      showDashboard();
+      return;
+    } catch (error) {
+      if (error.code === "23505" ||
+          error.message?.toLowerCase().includes("already taken")) {
+        startUsernameSetup(user, suggestedUsername);
+        showMessage(
+          "That username is already taken. Choose another.",
+          true
+        );
+        return;
+      }
+
+      throw error;
+    }
   }
 
-  setupUser = user;
-  setMode("username");
-  showMessage("Choose a username to finish setting up your account.");
+  startUsernameSetup(user);
 }
 
 authForm.addEventListener("submit", async (event) => {
@@ -725,7 +873,9 @@ authForm.addEventListener("submit", async (event) => {
       const username = usernameInput.value.trim();
 
       if (!validUsername(username)) {
-        throw new Error("Use 3–20 characters: letters, numbers, or underscores.");
+        throw new Error(
+          "Use 3–20 characters: letters, numbers, or underscores."
+        );
       }
 
       const { data, error } = await supabaseClient.auth.signUp({
@@ -743,8 +893,11 @@ authForm.addEventListener("submit", async (event) => {
         await handleSignedIn(data.user);
       } else {
         setMode("login");
-        showMessage("Account created. Confirm your email, then sign in to finish setup.");
+        showMessage(
+          "Account created. Confirm your email, then sign in to finish setup."
+        );
       }
+
       return;
     }
 
@@ -756,11 +909,14 @@ authForm.addEventListener("submit", async (event) => {
       const username = usernameInput.value.trim();
 
       if (!validUsername(username)) {
-        throw new Error("Use 3–20 characters: letters, numbers, or underscores.");
+        throw new Error(
+          "Use 3–20 characters: letters, numbers, or underscores."
+        );
       }
 
       currentUsername = await saveUsername(setupUser, username);
       currentUser = setupUser;
+      setupUser = null;
       showDashboard();
       return;
     }
@@ -773,7 +929,10 @@ authForm.addEventListener("submit", async (event) => {
     if (error) throw error;
     await handleSignedIn(data.user);
   } catch (error) {
-    showMessage(error.message || "Something went wrong. Please try again.", true);
+    showMessage(
+      error.message || "Something went wrong. Please try again.",
+      true
+    );
   } finally {
     setBusy(false);
   }
@@ -806,7 +965,10 @@ githubButton.addEventListener("click", async () => {
 
     if (error) throw error;
   } catch (error) {
-    showMessage(error.message || "GitHub sign-in could not start.", true);
+    showMessage(
+      error.message || "GitHub sign-in could not start.",
+      true
+    );
     setBusy(false);
   }
 });
@@ -836,3 +998,4 @@ supabaseClient.auth.onAuthStateChange((event) => {
 
 setMode("login");
 initializeApp();
+```
