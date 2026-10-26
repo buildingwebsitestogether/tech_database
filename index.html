@@ -823,10 +823,27 @@
                 icon: 'fa-robot',
                 color: 'from-brand-500 to-purple-500',
                 action: 'openAiModal'
+            },
+            {
+                id: 'proj-identity-playbook',
+                title: 'IDENTITY. PLAYBOOK',
+                category: 'Web App',
+                description: 'Design basketball plays with an interactive court, movable players, and arrows. Save and edit your plays.',
+                tags: ['Basketball', 'Play Design', 'Supabase'],
+                icon: 'fa-chalkboard-user',
+                color: 'from-emerald-500 to-teal-500',
+                action: 'openIdentityApp'
             }
         ];
 
         let projects = JSON.parse(localStorage.getItem('sams_devhub_projects')) || defaultProjects;
+        if (!projects.some(p => p.id === 'proj-identity-playbook')) {
+    const identityProject = defaultProjects.find(p => p.id === 'proj-identity-playbook');
+    if (identityProject) {
+        projects.push(identityProject);
+        localStorage.setItem('sams_devhub_projects', JSON.stringify(projects));
+    }
+}
         let activeCategory = 'All';
         let viewMode = 'grid'; // 'grid' or 'list'
 
@@ -1625,7 +1642,9 @@
 
             requestAnimationFrame(drawGame);
         }
-
+function openIdentityApp() {
+    window.location.href = 'identity/';
+}
         // Modal Controls for Game
         function openGameModal() {
             const gameModal = document.getElementById('gameModal');
