@@ -58,8 +58,10 @@ function setMode(nextMode) {
   githubButton.hidden = false;
   switchText.hidden = false;
   switchButton.hidden = false;
+
   usernameField.hidden =
     mode !== "signup" && mode !== "username";
+
   usernameInput.required =
     mode === "signup" || mode === "username";
 
@@ -197,6 +199,11 @@ function showDashboard() {
   `;
   document.head.appendChild(style);
 
+  // Connect the interactive court designer.
+  if (typeof window.initCourtDesigner === "function") {
+    window.initCourtDesigner();
+  }
+
   $("showPlaysButton").addEventListener("click", () => {
     $("playsSection").scrollIntoView({ behavior: "smooth" });
   });
@@ -213,6 +220,7 @@ function showDashboard() {
 
   $("dashboardSignOut").addEventListener("click", async () => {
     const { error } = await supabaseClient.auth.signOut();
+
     if (error) {
       alert(error.message);
     } else {
@@ -247,6 +255,10 @@ function openEditor(play = null) {
   } else {
     $("editorTitle").textContent = "Create a play";
     delete $("playForm").dataset.editId;
+  }
+
+  if (window.loadCourtDiagram) {
+    window.loadCourtDiagram(play ? play.diagram : null);
   }
 
   $("playEditor").scrollIntoView({ behavior: "smooth" });
@@ -290,7 +302,7 @@ async function loadPlays() {
       <h3>${escapeHTML(play.title)}</h3>
       <p>${escapeHTML(play.description || "No description yet.")}</p>
       <div class="play-actions">
-        <button type="button" data-edit="${escapeHTML(play.id)}">Edit</button>
+        <button type="button" data-edit="${escapeHTML(play.id)}">Edit / Design</button>
         <button class="secondary" type="button" data-delete="${escapeHTML(play.id)}">Delete</button>
       </div>
     </article>
@@ -320,6 +332,9 @@ async function savePlay(event) {
     title: $("playTitle").value.trim(),
     play_type: $("playType").value,
     description: $("playDescription").value.trim(),
+    diagram: window.getCourtDiagram
+      ? window.getCourtDiagram()
+      : {},
     updated_at: new Date().toISOString()
   };
 
@@ -339,8 +354,7 @@ async function savePlay(event) {
         .from("identity_plays")
         .insert({
           ...play,
-          user_id: currentUser.id,
-          diagram: {}
+          user_id: currentUser.id
         });
     }
 
@@ -477,15 +491,18 @@ authForm.addEventListener("submit", async (event) => {
 
 switchButton.addEventListener("click", () => {
   if (busy) return;
+
   if (mode === "username" && setupUser) {
     showMessage("Please finish choosing your username first.", true);
     return;
   }
+
   setMode(mode === "login" ? "signup" : "login");
 });
 
 githubButton.addEventListener("click", async () => {
   if (busy) return;
+
   setBusy(true);
   showMessage("");
 
@@ -496,6 +513,7 @@ githubButton.addEventListener("click", async () => {
         redirectTo: window.location.origin + window.location.pathname
       }
     });
+
     if (error) throw error;
   } catch (error) {
     showMessage(error.message || "GitHub sign-in could not start.", true);
