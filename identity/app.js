@@ -23,10 +23,17 @@ const authCard = document.querySelector(".auth-card");
 let mode = "login";
 let busy = false;
 let setupUser = null;
+let currentUser = null;
+let currentUsername = "";
+let plays = [];
 
 function showMessage(text, isError = false) {
   message.textContent = text;
   message.style.color = isError ? "#ff7777" : "#8fe3a1";
+}
+
+function validUsername(value) {
+  return /^[A-Za-z0-9_]{3,20}$/.test(value);
 }
 
 function setBusy(value) {
@@ -51,10 +58,8 @@ function setMode(nextMode) {
   githubButton.hidden = false;
   switchText.hidden = false;
   switchButton.hidden = false;
-
   usernameField.hidden =
     mode !== "signup" && mode !== "username";
-
   usernameInput.required =
     mode === "signup" || mode === "username";
 
@@ -85,80 +90,295 @@ function setMode(nextMode) {
   showMessage("");
 }
 
-function validUsername(value) {
-  return /^[A-Za-z0-9_]{3,20}$/.test(value);
-}
-
 async function saveUsername(user, username) {
-  const cleanUsername = username.trim();
+  const clean = username.trim();
 
   const { error } = await supabaseClient
     .from("identity_profiles")
     .upsert(
-      {
-        id: user.id,
-        username: cleanUsername
-      },
+      { id: user.id, username: clean },
       { onConflict: "id" }
     );
 
   if (error) {
     if (error.code === "23505") {
-      throw new Error(
-        "That username is already taken. Please choose another."
-      );
+      throw new Error("That username is already taken.");
     }
-
     throw error;
   }
 
-  return cleanUsername;
+  return clean;
 }
 
-async function showDashboard(user, username) {
-  authForm.hidden = true;
-  githubButton.hidden = true;
-  switchText.hidden = true;
-  switchButton.hidden = true;
+function showDashboard() {
+  authCard.innerHTML = `
+    <div class="dashboard">
+      <p class="eyebrow">IDENTITY PLAYBOOK</p>
+      <h1>Welcome, ${escapeHTML(currentUsername)}.</h1>
+      <p class="dashboard-intro">
+        Your game. Your identity. Build your next possession.
+      </p>
 
-  formTitle.textContent = "You're signed in!";
+      <div class="dashboard-stats">
+        <div class="stat-card">
+          <span id="playCount">0</span>
+          <p>Total plays</p>
+        </div>
+        <div class="stat-card">
+          <span id="offenseCount">0</span>
+          <p>Offensive plays</p>
+        </div>
+        <div class="stat-card">
+          <span id="defenseCount">0</span>
+          <p>Defensive plays</p>
+        </div>
+      </div>
 
-  formSubtitle.textContent = username
-    ? `Welcome, ${username}. Your playbook is ready to build.`
-    : "Your account is connected.";
+      <div class="dashboard-actions">
+        <button id="showPlaysButton" type="button">My Plays</button>
+        <button id="newPlayButton" type="button">+ Create a Play</button>
+        <button id="dashboardSignOut" class="secondary" type="button">Sign out</button>
+      </div>
 
-  showMessage(
-    "Your account is connected. Next, we'll add saved plays and uploads."
-  );
+      <section id="playEditor" hidden>
+        <h2 id="editorTitle">Create a play</h2>
+        <form id="playForm">
+          <label for="playTitle">Play name</label>
+          <input id="playTitle" maxlength="100" required
+            placeholder="e.g. Horns Pick and Roll">
 
-  let signOutButton = $("signOutButton");
+          <label for="playType">Play type</label>
+          <select id="playType" required>
+            <option value="offense">Offense</option>
+            <option value="defense">Defense</option>
+          </select>
 
-  if (!signOutButton) {
-    signOutButton = document.createElement("button");
-    signOutButton.id = "signOutButton";
-    signOutButton.className = "secondary";
-    signOutButton.type = "button";
-    signOutButton.textContent = "Sign out";
+          <label for="playDescription">Description and instructions</label>
+          <textarea id="playDescription" rows="5" maxlength="5000"
+            placeholder="Describe player positions, movements, and assignments..."></textarea>
 
-    authCard.appendChild(signOutButton);
+          <button id="savePlayButton" type="submit">Save play</button>
+          <button id="cancelPlayButton" class="secondary" type="button">Cancel</button>
+          <p id="playMessage" role="status"></p>
+        </form>
+      </section>
 
-    signOutButton.addEventListener("click", async () => {
-      signOutButton.disabled = true;
+      <section id="playsSection">
+        <h2>My Plays</h2>
+        <div id="playsList"><p>Loading your plays...</p></div>
+      </section>
+    </div>
+  `;
 
-      const { error } = await supabaseClient.auth.signOut();
+  const style = document.createElement("style");
+  style.textContent = `
+    .dashboard { color: #f5f5f5; text-align: left; }
+    .dashboard h1 { font-size: clamp(1.8rem, 5vw, 2.7rem); margin: 8px 0; }
+    .dashboard h2 { margin-top: 28px; }
+    .eyebrow { letter-spacing: 3px; font-weight: bold; color: #b9f27c; }
+    .dashboard-intro { color: #b9b9b9; }
+    .dashboard-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 24px 0; }
+    .stat-card, .play-card { background: #202020; border: 1px solid #383838; border-radius: 12px; padding: 16px; }
+    .stat-card span { font-size: 1.8rem; font-weight: bold; }
+    .stat-card p { color: #b9b9b9; margin-bottom: 0; font-size: .85rem; }
+    .dashboard-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .dashboard button { cursor: pointer; padding: 12px 16px; border: 0; border-radius: 8px; font-weight: bold; }
+    .dashboard button:not(.secondary) { background: #b9f27c; color: #141414; }
+    .dashboard .secondary { background: #303030; color: white; border: 1px solid #555; }
+    .dashboard label { display: block; margin-top: 14px; margin-bottom: 6px; }
+    .dashboard input, .dashboard select, .dashboard textarea { box-sizing: border-box; width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #555; background: #171717; color: white; font: inherit; }
+    .dashboard #playEditor { margin-top: 24px; padding: 18px; background: #191919; border-radius: 12px; }
+    .play-card { margin-bottom: 12px; }
+    .play-card h3 { margin-top: 0; }
+    .play-card p { white-space: pre-wrap; overflow-wrap: anywhere; color: #ddd; }
+    .play-card .play-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .play-type { color: #b9f27c; text-transform: uppercase; font-size: .75rem; letter-spacing: 1px; }
+    @media (max-width: 480px) { .dashboard-stats { grid-template-columns: 1fr; } }
+  `;
+  document.head.appendChild(style);
 
-      if (error) {
-        showMessage(error.message, true);
-        signOutButton.disabled = false;
-        return;
-      }
+  $("showPlaysButton").addEventListener("click", () => {
+    $("playsSection").scrollIntoView({ behavior: "smooth" });
+  });
 
+  $("newPlayButton").addEventListener("click", () => openEditor());
+
+  $("cancelPlayButton").addEventListener("click", () => {
+    $("playForm").reset();
+    $("playEditor").hidden = true;
+    delete $("playForm").dataset.editId;
+  });
+
+  $("playForm").addEventListener("submit", savePlay);
+
+  $("dashboardSignOut").addEventListener("click", async () => {
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) {
+      alert(error.message);
+    } else {
       window.location.reload();
+    }
+  });
+
+  loadPlays();
+}
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[char]);
+}
+
+function openEditor(play = null) {
+  $("playEditor").hidden = false;
+  $("playForm").reset();
+  $("playMessage").textContent = "";
+
+  if (play) {
+    $("editorTitle").textContent = "Edit play";
+    $("playTitle").value = play.title;
+    $("playType").value = play.play_type;
+    $("playDescription").value = play.description || "";
+    $("playForm").dataset.editId = play.id;
+  } else {
+    $("editorTitle").textContent = "Create a play";
+    delete $("playForm").dataset.editId;
+  }
+
+  $("playEditor").scrollIntoView({ behavior: "smooth" });
+}
+
+async function loadPlays() {
+  const list = $("playsList");
+  list.innerHTML = "<p>Loading your plays...</p>";
+
+  const { data, error } = await supabaseClient
+    .from("identity_plays")
+    .select("id, title, play_type, description, diagram, created_at, updated_at")
+    .eq("user_id", currentUser.id)
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    list.textContent = "Could not load plays: " + error.message;
+    return;
+  }
+
+  plays = data || [];
+
+  $("playCount").textContent = plays.length;
+  $("offenseCount").textContent =
+    plays.filter((play) => play.play_type === "offense").length;
+  $("defenseCount").textContent =
+    plays.filter((play) => play.play_type === "defense").length;
+
+  if (plays.length === 0) {
+    list.innerHTML = `
+      <div class="play-card">
+        <h3>Your playbook starts here.</h3>
+        <p>Create your first offensive or defensive play to get started.</p>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = plays.map((play) => `
+    <article class="play-card">
+      <span class="play-type">${escapeHTML(play.play_type)}</span>
+      <h3>${escapeHTML(play.title)}</h3>
+      <p>${escapeHTML(play.description || "No description yet.")}</p>
+      <div class="play-actions">
+        <button type="button" data-edit="${escapeHTML(play.id)}">Edit</button>
+        <button class="secondary" type="button" data-delete="${escapeHTML(play.id)}">Delete</button>
+      </div>
+    </article>
+  `).join("");
+
+  list.querySelectorAll("[data-edit]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const play = plays.find((item) => item.id === button.dataset.edit);
+      if (play) openEditor(play);
     });
+  });
+
+  list.querySelectorAll("[data-delete]").forEach((button) => {
+    button.addEventListener("click", () => deletePlay(button.dataset.delete));
+  });
+}
+
+async function savePlay(event) {
+  event.preventDefault();
+
+  const saveButton = $("savePlayButton");
+  const playMessage = $("playMessage");
+  saveButton.disabled = true;
+  playMessage.textContent = "Saving...";
+
+  const play = {
+    title: $("playTitle").value.trim(),
+    play_type: $("playType").value,
+    description: $("playDescription").value.trim(),
+    updated_at: new Date().toISOString()
+  };
+
+  const editId = $("playForm").dataset.editId;
+
+  try {
+    let result;
+
+    if (editId) {
+      result = await supabaseClient
+        .from("identity_plays")
+        .update(play)
+        .eq("id", editId)
+        .eq("user_id", currentUser.id);
+    } else {
+      result = await supabaseClient
+        .from("identity_plays")
+        .insert({
+          ...play,
+          user_id: currentUser.id,
+          diagram: {}
+        });
+    }
+
+    if (result.error) throw result.error;
+
+    playMessage.textContent = "Play saved!";
+    $("playEditor").hidden = true;
+    await loadPlays();
+  } catch (error) {
+    playMessage.textContent = error.message || "Could not save the play.";
+  } finally {
+    saveButton.disabled = false;
   }
 }
 
+async function deletePlay(id) {
+  const play = plays.find((item) => item.id === id);
+  if (!play) return;
+
+  if (!confirm(`Delete "${play.title}"? This cannot be undone.`)) return;
+
+  const { error } = await supabaseClient
+    .from("identity_plays")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", currentUser.id);
+
+  if (error) {
+    alert("Could not delete play: " + error.message);
+    return;
+  }
+
+  await loadPlays();
+}
+
 async function handleSignedIn(user) {
+  currentUser = user;
+
   const { data: profile, error } = await supabaseClient
     .from("identity_profiles")
     .select("username")
@@ -168,15 +388,16 @@ async function handleSignedIn(user) {
   if (error) throw error;
 
   if (profile) {
-    await showDashboard(user, profile.username);
+    currentUsername = profile.username;
+    showDashboard();
     return;
   }
 
-  const savedUsername = user.user_metadata?.playbook_username;
+  const username = user.user_metadata?.playbook_username;
 
-  if (savedUsername) {
-    const username = await saveUsername(user, savedUsername);
-    await showDashboard(user, username);
+  if (username) {
+    currentUsername = await saveUsername(user, username);
+    showDashboard();
     return;
   }
 
@@ -187,7 +408,6 @@ async function handleSignedIn(user) {
 
 authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-
   if (busy) return;
 
   setBusy(true);
@@ -201,20 +421,15 @@ authForm.addEventListener("submit", async (event) => {
       const username = usernameInput.value.trim();
 
       if (!validUsername(username)) {
-        throw new Error(
-          "Use 3–20 characters: letters, numbers, or underscores."
-        );
+        throw new Error("Use 3–20 characters: letters, numbers, or underscores.");
       }
 
       const { data, error } = await supabaseClient.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo:
-            window.location.origin + window.location.pathname,
-          data: {
-            playbook_username: username
-          }
+          emailRedirectTo: window.location.origin + window.location.pathname,
+          data: { playbook_username: username }
         }
       });
 
@@ -224,49 +439,37 @@ authForm.addEventListener("submit", async (event) => {
         await handleSignedIn(data.user);
       } else {
         setMode("login");
-        showMessage(
-          "Account created! Confirm your email, then sign in. Your username will be retrieved from your account."
-        );
+        showMessage("Account created. Confirm your email, then sign in to finish setup.");
       }
-
       return;
     }
 
     if (mode === "username") {
       if (!setupUser) {
-        throw new Error(
-          "Your session has expired. Please sign in again."
-        );
+        throw new Error("Your session expired. Please sign in again.");
       }
 
       const username = usernameInput.value.trim();
 
       if (!validUsername(username)) {
-        throw new Error(
-          "Use 3–20 characters: letters, numbers, or underscores."
-        );
+        throw new Error("Use 3–20 characters: letters, numbers, or underscores.");
       }
 
-      const savedUsername = await saveUsername(setupUser, username);
-      await showDashboard(setupUser, savedUsername);
-      showMessage("Username saved!");
+      currentUsername = await saveUsername(setupUser, username);
+      currentUser = setupUser;
+      showDashboard();
       return;
     }
 
-    const { data, error } =
-      await supabaseClient.auth.signInWithPassword({
-        email,
-        password
-      });
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email,
+      password
+    });
 
     if (error) throw error;
-
     await handleSignedIn(data.user);
   } catch (error) {
-    showMessage(
-      error.message || "Something went wrong. Please try again.",
-      true
-    );
+    showMessage(error.message || "Something went wrong. Please try again.", true);
   } finally {
     setBusy(false);
   }
@@ -274,21 +477,15 @@ authForm.addEventListener("submit", async (event) => {
 
 switchButton.addEventListener("click", () => {
   if (busy) return;
-
   if (mode === "username" && setupUser) {
-    showMessage(
-      "Please finish choosing your username before switching forms.",
-      true
-    );
+    showMessage("Please finish choosing your username first.", true);
     return;
   }
-
   setMode(mode === "login" ? "signup" : "login");
 });
 
 githubButton.addEventListener("click", async () => {
   if (busy) return;
-
   setBusy(true);
   showMessage("");
 
@@ -296,35 +493,30 @@ githubButton.addEventListener("click", async () => {
     const { error } = await supabaseClient.auth.signInWithOAuth({
       provider: "github",
       options: {
-        redirectTo:
-          window.location.origin + window.location.pathname
+        redirectTo: window.location.origin + window.location.pathname
       }
     });
-
     if (error) throw error;
   } catch (error) {
-    showMessage(
-      error.message || "GitHub sign-in could not start.",
-      true
-    );
+    showMessage(error.message || "GitHub sign-in could not start.", true);
     setBusy(false);
   }
 });
 
 async function initializeApp() {
-  try {
-    const { data, error } = await supabaseClient.auth.getSession();
+  const { data, error } = await supabaseClient.auth.getSession();
 
-    if (error) throw error;
+  if (error) {
+    showMessage(error.message || "Could not load your session.", true);
+    return;
+  }
 
-    if (data.session) {
+  if (data.session) {
+    try {
       await handleSignedIn(data.session.user);
+    } catch (error) {
+      showMessage(error.message || "Could not load your account.", true);
     }
-  } catch (error) {
-    showMessage(
-      error.message || "Could not load your session.",
-      true
-    );
   }
 }
 
