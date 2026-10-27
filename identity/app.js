@@ -1,4 +1,3 @@
-```javascript
 const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY
@@ -932,4 +931,3 @@ supabaseClient.auth.onAuthStateChange((event) => {
 
 setMode("login");
 initializeApp();
-```
