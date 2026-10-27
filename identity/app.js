@@ -31,6 +31,7 @@ let currentUsername = "";
 let plays = [];
 
 function showMessage(text, isError = false) {
+  if (!message) return;
   message.textContent = text;
   message.style.color = isError ? "#ff7777" : "#8fe3a1";
 }
@@ -50,17 +51,20 @@ function isEmailUser(user) {
 
 function setBusy(value) {
   busy = value;
-  submitButton.disabled = value;
-  githubButton.disabled = value;
-  switchButton.disabled = value;
 
-  submitButton.textContent = value
-    ? "Please wait..."
-    : mode === "signup"
-      ? "Create account"
-      : mode === "username"
-        ? "Save username"
-        : "Sign in";
+  if (submitButton) submitButton.disabled = value;
+  if (githubButton) githubButton.disabled = value;
+  if (switchButton) switchButton.disabled = value;
+
+  if (submitButton) {
+    submitButton.textContent = value
+      ? "Please wait..."
+      : mode === "signup"
+        ? "Create account"
+        : mode === "username"
+          ? "Save username"
+          : "Sign in";
+  }
 }
 
 function setMode(nextMode) {
@@ -81,14 +85,18 @@ function setMode(nextMode) {
   passwordInput.required = mode !== "username";
 
   formTitle.textContent =
-    mode === "signup" ? "Create your account" :
-    mode === "username" ? "Choose your username" :
-    "Welcome back";
+    mode === "signup"
+      ? "Create your account"
+      : mode === "username"
+        ? "Choose your username"
+        : "Welcome back";
 
   formSubtitle.textContent =
-    mode === "signup" ? "Choose a username to start your playbook." :
-    mode === "username" ? "Choose a unique username to finish setting up." :
-    "Sign in to get back to your playbook.";
+    mode === "signup"
+      ? "Choose a username to start your playbook."
+      : mode === "username"
+        ? "Choose a unique username to finish setting up."
+        : "Sign in to get back to your playbook.";
 
   switchText.textContent =
     mode === "signup"
@@ -132,6 +140,16 @@ async function saveUsername(user, username) {
   }
 
   return clean;
+}
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[char]);
 }
 
 function showDashboard() {
@@ -225,7 +243,14 @@ function showDashboard() {
     </div>
   `;
 
-  const style = document.createElement("style");
+  let style = document.getElementById("identityDashboardStyles");
+
+  if (!style) {
+    style = document.createElement("style");
+    style.id = "identityDashboardStyles";
+    document.head.appendChild(style);
+  }
+
   style.textContent = `
     .dashboard { color: #f5f5f5; text-align: left; }
     .dashboard h1 { font-size: clamp(1.8rem, 5vw, 2.7rem); margin: 8px 0; }
@@ -249,43 +274,18 @@ function showDashboard() {
     .play-card p { white-space: pre-wrap; overflow-wrap: anywhere; color: #ddd; }
     .play-card .play-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .play-type { color: #b9f27c; text-transform: uppercase; font-size: .75rem; letter-spacing: 1px; }
-
-    #filesSection {
-      margin-top: 28px;
-      padding: 18px;
-      background: #191919;
-      border: 1px solid #383838;
-      border-radius: 12px;
-    }
+    #filesSection { margin-top: 28px; padding: 18px; background: #191919; border: 1px solid #383838; border-radius: 12px; }
     .files-help, .file-size { color: #b9b9b9; }
     #filesList { margin-top: 18px; }
-    .file-card {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-bottom: 10px;
-      padding: 14px;
-      background: #202020;
-      border: 1px solid #383838;
-      border-radius: 10px;
-    }
-    .file-name {
-      overflow-wrap: anywhere;
-      flex: 1;
-      min-width: 120px;
-    }
+    .file-card { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; padding: 14px; background: #202020; border: 1px solid #383838; border-radius: 10px; }
+    .file-name { overflow-wrap: anywhere; flex: 1; min-width: 120px; }
     .file-actions { display: flex; flex-wrap: wrap; gap: 8px; }
     .file-size { font-size: .85rem; }
     #fileMessage { overflow-wrap: anywhere; }
-
     @media (max-width: 480px) {
       .dashboard-stats { grid-template-columns: 1fr; }
     }
   `;
-
-  document.head.appendChild(style);
 
   if (typeof window.initCourtDesigner === "function") {
     window.initCourtDesigner();
@@ -298,11 +298,9 @@ function showDashboard() {
   $("newPlayButton").addEventListener("click", () => openEditor());
 
   const changePasswordButton = $("changePasswordButton");
+
   if (changePasswordButton) {
-    changePasswordButton.addEventListener(
-      "click",
-      showChangePasswordPage
-    );
+    changePasswordButton.addEventListener("click", showChangePasswordPage);
   }
 
   $("cancelPlayButton").addEventListener("click", () => {
@@ -329,10 +327,6 @@ function showDashboard() {
   loadUserFiles();
 }
 
-// =============================
-// CHANGE PASSWORD PAGE
-// =============================
-
 function showChangePasswordPage() {
   if (!currentUser || !isEmailUser(currentUser)) {
     showDashboard();
@@ -343,29 +337,20 @@ function showChangePasswordPage() {
     <div class="dashboard">
       <p class="eyebrow">IDENTITY PLAYBOOK</p>
       <h1>Change password</h1>
-      <p class="dashboard-intro">
-        Choose a new password for your account.
-      </p>
+      <p class="dashboard-intro">Choose a new password for your account.</p>
 
       <form id="changePasswordForm">
         <label for="newPassword">New password</label>
-        <input id="newPassword" type="password"
-          autocomplete="new-password" minlength="8"
-          required placeholder="At least 8 characters">
+        <input id="newPassword" type="password" autocomplete="new-password"
+          minlength="8" required placeholder="At least 8 characters">
 
         <label for="confirmPassword">Confirm new password</label>
-        <input id="confirmPassword" type="password"
-          autocomplete="new-password" minlength="8"
-          required placeholder="Enter it again">
+        <input id="confirmPassword" type="password" autocomplete="new-password"
+          minlength="8" required placeholder="Enter it again">
 
-        <button id="updatePasswordButton" type="submit">
-          Update password
-        </button>
-        <button id="backToDashboard" class="secondary"
-          type="button">Back to dashboard</button>
-
-        <p id="passwordMessage" role="status"
-          aria-live="polite"></p>
+        <button id="updatePasswordButton" type="submit">Update password</button>
+        <button id="backToDashboard" class="secondary" type="button">Back to dashboard</button>
+        <p id="passwordMessage" role="status" aria-live="polite"></p>
       </form>
     </div>
   `;
@@ -381,8 +366,7 @@ function showChangePasswordPage() {
     const updateButton = $("updatePasswordButton");
 
     if (password.length < 8) {
-      passwordMessage.textContent =
-        "Your password must be at least 8 characters.";
+      passwordMessage.textContent = "Your password must be at least 8 characters.";
       return;
     }
 
@@ -395,10 +379,7 @@ function showChangePasswordPage() {
     passwordMessage.textContent = "Updating password...";
 
     try {
-      const { error } = await supabaseClient.auth.updateUser({
-        password
-      });
-
+      const { error } = await supabaseClient.auth.updateUser({ password });
       if (error) throw error;
 
       $("changePasswordForm").reset();
@@ -411,20 +392,6 @@ function showChangePasswordPage() {
     }
   });
 }
-
-function escapeHTML(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  })[char]);
-}
-
-// =============================
-// PRIVATE FILE MANAGER
-// =============================
 
 function setFileMessage(text, isError = false) {
   const element = $("fileMessage");
@@ -453,10 +420,7 @@ function safeFileName(name) {
 }
 
 function isAllowedFile(file) {
-  return (
-    file.type === "application/pdf" ||
-    file.type.startsWith("image/")
-  );
+  return file.type === "application/pdf" || file.type.startsWith("image/");
 }
 
 async function loadUserFiles() {
@@ -480,7 +444,10 @@ async function loadUserFiles() {
     );
 
     if (!files.length) {
-      list.innerHTML = "<p>No files yet. Upload an image or PDF above.</p>";
+      list.textContent = "";
+      const empty = document.createElement("p");
+      empty.textContent = "No files yet. Upload an image or PDF above.";
+      list.appendChild(empty);
       return;
     }
 
@@ -496,16 +463,11 @@ async function loadUserFiles() {
             <div class="file-size">${formatFileSize(size)}</div>
           </div>
           <div class="file-actions">
-            <button type="button"
-              data-file-action="download"
-              data-file-path="${escapeHTML(path)}">
-              Download
-            </button>
+            <button type="button" data-file-action="download"
+              data-file-path="${escapeHTML(path)}">Download</button>
             <button type="button" class="secondary"
               data-file-action="delete"
-              data-file-path="${escapeHTML(path)}">
-              Delete
-            </button>
+              data-file-path="${escapeHTML(path)}">Delete</button>
           </div>
         </article>
       `;
@@ -552,12 +514,10 @@ async function uploadFile(event) {
 
   try {
     const uniqueId =
-      globalThis.crypto?.randomUUID?.() ||
-      Math.random().toString(36).slice(2);
+      globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
 
     const storedName =
       `${Date.now()}-${uniqueId}-${safeFileName(file.name)}`;
-
     const path = `${currentUser.id}/${storedName}`;
 
     const { error } = await supabaseClient.storage
@@ -607,9 +567,7 @@ async function handleFileAction(event) {
       const link = document.createElement("a");
 
       link.href = url;
-      link.download = path.split("/").pop().replace(
-        /^\d+-[a-z0-9]+-/i, ""
-      );
+      link.download = path.split("/").pop().replace(/^\d+-[a-z0-9]+-/i, "");
 
       document.body.appendChild(link);
       link.click();
@@ -620,9 +578,7 @@ async function handleFileAction(event) {
     } else if (action === "delete") {
       const fileName = path.split("/").pop();
 
-      if (!confirm(`Delete "${fileName}"? This cannot be undone.`)) {
-        return;
-      }
+      if (!confirm(`Delete "${fileName}"? This cannot be undone.`)) return;
 
       setFileMessage("Deleting file...");
 
@@ -641,10 +597,6 @@ async function handleFileAction(event) {
     button.disabled = false;
   }
 }
-
-// =============================
-// PLAYBOOK FUNCTIONS
-// =============================
 
 function openEditor(play = null) {
   $("playEditor").hidden = false;
@@ -673,7 +625,7 @@ async function loadPlays() {
   const list = $("playsList");
   if (!list || !currentUser) return;
 
-  list.innerHTML = "<p>Loading your plays...</p>";
+  list.textContent = "Loading your plays...";
 
   const { data, error } = await supabaseClient
     .from("identity_plays")
@@ -699,7 +651,8 @@ async function loadPlays() {
       <div class="play-card">
         <h3>Your playbook starts here.</h3>
         <p>Create your first offensive or defensive play to get started.</p>
-      </div>`;
+      </div>
+    `;
     return;
   }
 
@@ -732,6 +685,7 @@ async function savePlay(event) {
 
   const saveButton = $("savePlayButton");
   const playMessage = $("playMessage");
+
   saveButton.disabled = true;
   playMessage.textContent = "Saving...";
 
@@ -739,9 +693,7 @@ async function savePlay(event) {
     title: $("playTitle").value.trim(),
     play_type: $("playType").value,
     description: $("playDescription").value.trim(),
-    diagram: window.getCourtDiagram
-      ? window.getCourtDiagram()
-      : {},
+    diagram: window.getCourtDiagram ? window.getCourtDiagram() : {},
     updated_at: new Date().toISOString()
   };
 
@@ -759,10 +711,7 @@ async function savePlay(event) {
     } else {
       result = await supabaseClient
         .from("identity_plays")
-        .insert({
-          ...play,
-          user_id: currentUser.id
-        });
+        .insert({ ...play, user_id: currentUser.id });
     }
 
     if (result.error) throw result.error;
@@ -797,19 +746,14 @@ async function deletePlay(id) {
   await loadPlays();
 }
 
-// =============================
-// SIGN-IN AND USERNAME SETUP
-// =============================
-
 function startUsernameSetup(user, suggestedUsername = "") {
   setupUser = user;
   setMode("username");
 
-  if (suggestedUsername && validUsername(suggestedUsername)) {
-    usernameInput.value = suggestedUsername;
-  } else {
-    usernameInput.value = "";
-  }
+  usernameInput.value =
+    suggestedUsername && validUsername(suggestedUsername)
+      ? suggestedUsername
+      : "";
 
   showMessage("Choose a unique username to finish setting up your account.");
 }
@@ -841,13 +785,12 @@ async function handleSignedIn(user) {
       showDashboard();
       return;
     } catch (error) {
-      if (error.code === "23505" ||
-          error.message?.toLowerCase().includes("already taken")) {
+      if (
+        error.code === "23505" ||
+        error.message?.toLowerCase().includes("already taken")
+      ) {
         startUsernameSetup(user, suggestedUsername);
-        showMessage(
-          "That username is already taken. Choose another.",
-          true
-        );
+        showMessage("That username is already taken. Choose another.", true);
         return;
       }
 
@@ -929,10 +872,7 @@ authForm.addEventListener("submit", async (event) => {
     if (error) throw error;
     await handleSignedIn(data.user);
   } catch (error) {
-    showMessage(
-      error.message || "Something went wrong. Please try again.",
-      true
-    );
+    showMessage(error.message || "Something went wrong. Please try again.", true);
   } finally {
     setBusy(false);
   }
@@ -965,28 +905,22 @@ githubButton.addEventListener("click", async () => {
 
     if (error) throw error;
   } catch (error) {
-    showMessage(
-      error.message || "GitHub sign-in could not start.",
-      true
-    );
+    showMessage(error.message || "GitHub sign-in could not start.", true);
     setBusy(false);
   }
 });
 
 async function initializeApp() {
-  const { data, error } = await supabaseClient.auth.getSession();
+  try {
+    const { data, error } = await supabaseClient.auth.getSession();
 
-  if (error) {
-    showMessage(error.message || "Could not load your session.", true);
-    return;
-  }
+    if (error) throw error;
 
-  if (data.session) {
-    try {
+    if (data.session) {
       await handleSignedIn(data.session.user);
-    } catch (error) {
-      showMessage(error.message || "Could not load your account.", true);
     }
+  } catch (error) {
+    showMessage(error.message || "Could not load your session.", true);
   }
 }
 
