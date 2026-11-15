@@ -1,3 +1,4 @@
+
 const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_ANON_KEY
@@ -976,5 +977,16 @@ supabaseClient.auth.onAuthStateChange((event) => {
   }
 });
 
+// Set up the login screen, but wait for Privacy Policy acceptance
+// before restoring an existing session.
 setMode("login");
-initializeApp();
+
+window.initializeIdentityApp = initializeApp;
+
+try {
+  if (localStorage.getItem("identityPrivacyAccepted") === "v1") {
+    initializeApp();
+  }
+} catch (error) {
+  console.warn("Could not check Privacy Policy acceptance:", error);
+}
