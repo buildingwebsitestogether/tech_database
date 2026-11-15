@@ -39,6 +39,24 @@ function validUsername(value) {
   return /^[A-Za-z0-9_]{3,20}$/.test(value);
 }
 
+function validPassword(value) {
+  return value.length >= 8 &&
+    /[a-z]/.test(value) &&
+    /[A-Z]/.test(value) &&
+    /[0-9]/.test(value);
+}
+
+function passwordRuleMessage() {
+  return "Use at least 8 characters, including an uppercase letter, a lowercase letter, and a number.";
+}
+
+function originalStoredFileName(storedName) {
+  const uuidPrefix = storedName.match(/^\d+-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-(.+)$/i);
+  if (uuidPrefix) return uuidPrefix[1];
+  const compactPrefix = storedName.match(/^\d+-[a-z0-9]+-(.+)$/i);
+  return compactPrefix ? compactPrefix[1] : storedName;
+}
+
 function isEmailUser(user) {
   const providers = user?.app_metadata?.providers || [];
 
@@ -95,7 +113,7 @@ function setMode(nextMode) {
       ? "Choose a username to start your playbook."
       : mode === "username"
         ? "Choose a unique username to finish setting up."
-        : "Sign in to get back to your playbook.";
+        : "Sign in with email and password, or continue securely with GitHub.";
 
   switchText.textContent =
     mode === "signup"
@@ -152,6 +170,7 @@ function escapeHTML(value) {
 }
 
 function showDashboard() {
+  document.querySelector("main")?.classList.add("dashboard-mode");
   authCard.innerHTML = `
     <div class="dashboard">
       <p class="eyebrow">IDENTITY PLAYBOOK</p>
@@ -191,8 +210,17 @@ function showDashboard() {
       <section id="filesSection">
         <h2>My Files</h2>
         <p class="files-help">
-          Store images and PDFs for your basketball playbook.
-          Maximum size: 10 MB per file.
+          Upload images or PDFs up to 10 MB each. Files are stored in this app's
+          private Supabase Storage bucket, inside a folder linked to your account.
+          This screen lists files from your account folder. Supabase Storage
+          policies control who can actually access those files; those rules should
+          be tested with a second account before relying on them for privacy.
+          File sharing is not currently available, so you cannot share files with
+          another user from this app.
+        </p>
+        <p class="files-help">
+          <strong>Where files go:</strong> Supabase Storage → identity-playbook-files
+          → your account folder. Use Delete below to remove a stored file.
         </p>
 
         <form id="fileUploadForm">
@@ -200,7 +228,7 @@ function showDashboard() {
           <input
             id="fileInput"
             type="file"
-            accept="image/*,application/pdf"
+            accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,application/pdf,image/jpeg,image/png,image/gif,image/webp"
             required
           >
           <button id="uploadFileButton" type="submit">Upload File</button>
@@ -251,38 +279,47 @@ function showDashboard() {
   }
 
   style.textContent = `
-    .dashboard { color: #f5f5f5; text-align: left; }
-    .dashboard h1 { font-size: clamp(1.8rem, 5vw, 2.7rem); margin: 8px 0; }
+    .dashboard { color: #f5f7fb; text-align: left; width: 100%; }
+    .dashboard h1 { font-size: clamp(1.8rem, 5vw, 2.7rem); margin: 8px 0; line-height: 1.15; }
     .dashboard h2 { margin-top: 28px; }
-    .eyebrow { letter-spacing: 3px; font-weight: bold; color: #b9f27c; }
-    .dashboard-intro { color: #b9b9b9; }
-    .dashboard-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 24px 0; }
-    .stat-card, .play-card { background: #202020; border: 1px solid #383838; border-radius: 12px; padding: 16px; }
-    .stat-card span { font-size: 1.8rem; font-weight: bold; }
-    .stat-card p { color: #b9b9b9; margin-bottom: 0; font-size: .85rem; }
+    .dashboard .eyebrow { letter-spacing: 2px; font-weight: 800; color: #ff9a52; }
+    .dashboard-intro { color: #b8c2d1; line-height: 1.6; }
+    .dashboard-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 24px 0; }
+    .stat-card, .play-card { background: #202938; border: 1px solid #354154; border-radius: 14px; padding: 17px; }
+    .stat-card span { font-size: 1.8rem; font-weight: 800; }
+    .stat-card p { color: #b8c2d1; margin-bottom: 0; font-size: .9rem; }
     .dashboard-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-    .dashboard button { cursor: pointer; padding: 12px 16px; border: 0; border-radius: 8px; font-weight: bold; }
-    .dashboard button:not(.secondary) { background: #b9f27c; color: #141414; }
-    .dashboard .secondary { background: #303030; color: white; border: 1px solid #555; }
-    .dashboard button:disabled { opacity: .6; cursor: wait; }
-    .dashboard label { display: block; margin-top: 14px; margin-bottom: 6px; }
-    .dashboard input, .dashboard select, .dashboard textarea { box-sizing: border-box; width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #555; background: #171717; color: white; font: inherit; }
-    .dashboard #playEditor { margin-top: 24px; padding: 18px; background: #191919; border-radius: 12px; }
+    .dashboard button { min-height: 44px; cursor: pointer; padding: 11px 16px; border: 0; border-radius: 9px; font-weight: 750; font: inherit; }
+    .dashboard button:not(.secondary) { background: #ff9a52; color: #20150e; }
+    .dashboard .secondary { background: #273244; color: #f5f7fb; border: 1px solid #536176; }
+    .dashboard button:disabled { opacity: .55; cursor: not-allowed; }
+    .dashboard label { display: block; margin-top: 14px; margin-bottom: 6px; font-weight: 650; }
+    .dashboard input, .dashboard select, .dashboard textarea { box-sizing: border-box; width: 100%; min-height: 46px; padding: 12px; border-radius: 9px; border: 1px solid #536176; background: #111925; color: #f5f7fb; font: inherit; }
+    .dashboard textarea { min-height: 120px; resize: vertical; }
+    .dashboard #playEditor { margin-top: 24px; padding: 20px; background: #182130; border: 1px solid #354154; border-radius: 14px; scroll-margin-top: 20px; }
     .play-card { margin-bottom: 12px; }
-    .play-card h3 { margin-top: 0; }
-    .play-card p { white-space: pre-wrap; overflow-wrap: anywhere; color: #ddd; }
+    .play-card h3 { margin-top: 8px; }
+    .play-card p { white-space: pre-wrap; overflow-wrap: anywhere; color: #d8dfeb; line-height: 1.6; }
     .play-card .play-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    .play-type { color: #b9f27c; text-transform: uppercase; font-size: .75rem; letter-spacing: 1px; }
-    #filesSection { margin-top: 28px; padding: 18px; background: #191919; border: 1px solid #383838; border-radius: 12px; }
-    .files-help, .file-size { color: #b9b9b9; }
+    .play-type { color: #ffad70; text-transform: uppercase; font-size: .75rem; letter-spacing: 1px; font-weight: 800; }
+    #filesSection, #playsSection { margin-top: 28px; padding: 20px; background: #182130; border: 1px solid #354154; border-radius: 14px; scroll-margin-top: 20px; }
+    .files-help, .file-size { color: #c0cada; line-height: 1.6; }
     #filesList { margin-top: 18px; }
-    .file-card { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; padding: 14px; background: #202020; border: 1px solid #383838; border-radius: 10px; }
+    .file-card { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; padding: 14px; background: #202938; border: 1px solid #354154; border-radius: 10px; }
     .file-name { overflow-wrap: anywhere; flex: 1; min-width: 120px; }
     .file-actions { display: flex; flex-wrap: wrap; gap: 8px; }
     .file-size { font-size: .85rem; }
-    #fileMessage { overflow-wrap: anywhere; }
-    @media (max-width: 480px) {
+    #fileMessage, #playMessage, #passwordMessage { overflow-wrap: anywhere; min-height: 1.4em; }
+    .dashboard button:focus-visible, .dashboard input:focus-visible, .dashboard select:focus-visible, .dashboard textarea:focus-visible { outline: 3px solid #ffd0ad; outline-offset: 3px; }
+    @media (max-width: 600px) {
       .dashboard-stats { grid-template-columns: 1fr; }
+      .dashboard-actions > button { flex: 1 1 100%; }
+      #filesSection, #playsSection, .dashboard #playEditor { padding: 15px; }
+      .file-actions { width: 100%; }
+      .file-actions button { flex: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .dashboard *, .dashboard *::before, .dashboard *::after { scroll-behavior: auto !important; transition: none !important; }
     }
   `;
 
@@ -312,11 +349,16 @@ function showDashboard() {
   $("fileUploadForm").addEventListener("submit", uploadFile);
   $("filesList").addEventListener("click", handleFileAction);
 
-  $("dashboardSignOut").addEventListener("click", async () => {
+  $("dashboardSignOut").addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.textContent = "Signing out...";
     const { error } = await supabaseClient.auth.signOut();
 
     if (error) {
-      alert(error.message);
+      button.disabled = false;
+      button.textContent = "Sign out";
+      alert("Could not sign out: " + error.message);
     } else {
       window.location.reload();
     }
@@ -327,6 +369,7 @@ function showDashboard() {
 }
 
 function showChangePasswordPage() {
+  document.querySelector("main")?.classList.add("dashboard-mode");
   if (!currentUser || !isEmailUser(currentUser)) {
     showDashboard();
     return;
@@ -364,8 +407,8 @@ function showChangePasswordPage() {
     const passwordMessage = $("passwordMessage");
     const updateButton = $("updatePasswordButton");
 
-    if (password.length < 8) {
-      passwordMessage.textContent = "Your password must be at least 8 characters.";
+    if (!validPassword(password)) {
+      passwordMessage.textContent = passwordRuleMessage();
       return;
     }
 
@@ -419,7 +462,7 @@ function safeFileName(name) {
 }
 
 function isAllowedFile(file) {
-  return file.type === "application/pdf" || file.type.startsWith("image/");
+  return ["application/pdf", "image/jpeg", "image/png", "image/gif", "image/webp"].includes(file.type);
 }
 
 async function loadUserFiles() {
@@ -453,7 +496,7 @@ async function loadUserFiles() {
     list.innerHTML = files.map((file) => {
       const path = `${currentUser.id}/${file.name}`;
       const size = Number(file.metadata?.size || 0);
-      const originalName = file.name.replace(/^\d+-[a-z0-9]+-/i, "");
+      const originalName = originalStoredFileName(file.name);
 
       return `
         <article class="file-card">
@@ -494,7 +537,7 @@ async function uploadFile(event) {
   }
 
   if (!isAllowedFile(file)) {
-    setFileMessage("Only image and PDF files are allowed.", true);
+    setFileMessage("Choose a PDF, JPG, PNG, GIF, or WEBP file.", true);
     return;
   }
 
@@ -566,7 +609,7 @@ async function handleFileAction(event) {
       const link = document.createElement("a");
 
       link.href = url;
-      link.download = path.split("/").pop().replace(/^\d+-[a-z0-9]+-/i, "");
+      link.download = originalStoredFileName(path.split("/").pop());
 
       document.body.appendChild(link);
       link.click();
@@ -813,6 +856,10 @@ authForm.addEventListener("submit", async (event) => {
 
     if (mode === "signup") {
       const username = usernameInput.value.trim();
+
+      if (!validPassword(password)) {
+        throw new Error(passwordRuleMessage());
+      }
 
       if (!validUsername(username)) {
         throw new Error(
