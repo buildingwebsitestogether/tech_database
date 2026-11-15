@@ -6,7 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#101722">
   <meta name="description" content="Create and manage your personal basketball playbook.">
-  <title>IDENTITY. PLAYBOOK</title>
+  <title>Identity Playbook</title>
+
+  <!-- Basketball favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23192333'/%3E%3Ccircle cx='50' cy='50' r='34' fill='%23ff9a52' stroke='%23ffffff' stroke-width='3'/%3E%3Cpath d='M16 50h68M50 16v68M26 26c17 15 31 33 48 48M74 26C57 41 43 59 26 74' fill='none' stroke='%23101722' stroke-width='3.5'/%3E%3C/svg%3E">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -641,6 +644,10 @@
         Accept & Continue
       </button>
 
+      <button id="declinePrivacyButton" class="secondary" type="button">
+        Decline
+      </button>
+
       <button id="closePrivacyButton" class="secondary" type="button" hidden>
         Close
       </button>
@@ -661,6 +668,8 @@
   <!-- Privacy Policy functionality -->
   <script>
     (() => {
+      // Change this version whenever the policy is meaningfully updated.
+      // For example: v1 -> v2. Previous acceptance will then be invalid.
       const POLICY_VERSION = "v1";
       const STORAGE_KEY = "identityPrivacyAccepted";
 
@@ -668,6 +677,7 @@
       const scrollArea = document.getElementById("privacyScroll");
       const checkbox = document.getElementById("privacyCheckbox");
       const acceptButton = document.getElementById("acceptPrivacyButton");
+      const declineButton = document.getElementById("declinePrivacyButton");
       const closeButton = document.getElementById("closePrivacyButton");
       const openButton = document.getElementById("openPrivacyButton");
       const privacyMessage = document.getElementById("privacyMessage");
@@ -703,12 +713,16 @@
         acceptButton.hidden = accepted;
         acceptButton.disabled = true;
         closeButton.hidden = !accepted;
+        declineButton.hidden = false;
 
         scrollArea.scrollTop = 0;
 
         if (!accepted) {
           privacyMessage.textContent =
             "Scroll to the bottom of the policy to enable acceptance.";
+        } else {
+          privacyMessage.textContent =
+            "You have already accepted this policy. You can close it or decline below.";
         }
 
         if (!dialog.open) {
@@ -740,6 +754,27 @@
         if (typeof window.initializeIdentityApp === "function") {
           window.initializeIdentityApp();
         }
+      });
+
+      declineButton.addEventListener("click", () => {
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch {
+          privacyMessage.textContent =
+            "Your browser could not update your choice. Please check your browser storage settings.";
+          return;
+        }
+
+        checkbox.checked = false;
+        checkbox.disabled = true;
+        acceptButton.hidden = false;
+        acceptButton.disabled = true;
+        closeButton.hidden = true;
+
+        privacyMessage.textContent =
+          "You declined the Privacy Policy. Access to Identity Playbook is blocked. You can review the policy, scroll to the bottom, and accept it if you change your mind.";
+
+        scrollArea.scrollTop = 0;
       });
 
       closeButton.addEventListener("click", () => {
