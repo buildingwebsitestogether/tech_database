@@ -1,480 +1,825 @@
 
-const supabaseClient = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
-);
+/* ============================================================
+   IDENTITY. PLAYBOOK — BUILD 3
+   Complete frontend application
+   Uses config.js, Supabase JS v2, and court-designer.js
+   ============================================================ */
 
-const $ = (id) => document.getElementById(id);
+(() => {
+  "use strict";
 
-const authForm = $("authForm");
-const formTitle = $("formTitle");
-const formSubtitle = $("formSubtitle");
-const usernameField = $("usernameField");
-const usernameInput = $("username");
-const emailInput = $("email");
-const passwordInput = $("password");
-const submitButton = $("submitButton");
-const githubButton = $("githubButton");
-const switchButton = $("switchButton");
-const switchText = $("switchText");
-const message = $("message");
-const authCard = document.querySelector(".auth-card");
+  const BUCKET = "identity-playbook-files";
+  const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
-const FILE_BUCKET = "identity-playbook-files";
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+  const ALLOWED_FILES = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "application/pdf"
+  ];
 
-let mode = "login";
-let busy = false;
-let setupUser = null;
-let currentUser = null;
-let currentUsername = "";
-let plays = [];
-
-function showMessage(text, isError = false) {
-  if (!message) return;
-  message.textContent = text;
-  message.style.color = isError ? "#ff7777" : "#8fe3a1";
-}
-
-function validUsername(value) {
-  return /^[A-Za-z0-9_]{3,20}$/.test(value);
-}
-
-function validPassword(value) {
-  return value.length >= 8 &&
-    /[a-z]/.test(value) &&
-    /[A-Z]/.test(value) &&
-    /[0-9]/.test(value);
-}
-
-function passwordRuleMessage() {
-  return "Use at least 8 characters, including an uppercase letter, a lowercase letter, and a number.";
-}
-
-function originalStoredFileName(storedName) {
-  const uuidPrefix = storedName.match(/^\d+-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-(.+)$/i);
-  if (uuidPrefix) return uuidPrefix[1];
-  const compactPrefix = storedName.match(/^\d+-[a-z0-9]+-(.+)$/i);
-  return compactPrefix ? compactPrefix[1] : storedName;
-}
-
-function isEmailUser(user) {
-  const providers = user?.app_metadata?.providers || [];
-
-  return (
-    user?.app_metadata?.provider === "email" ||
-    providers.includes("email")
+  const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY
   );
-}
 
-function setBusy(value) {
-  busy = value;
+  let currentUser = null;
+  let currentProfile = null;
+  let currentRole = "user";
+  let currentPlayId = null;
+  let currentTab = "plays";
+  let cachedPlays = [];
 
-  if (submitButton) submitButton.disabled = value;
-  if (githubButton) githubButton.disabled = value;
-  if (switchButton) switchButton.disabled = value;
+  const root = document.createElement("div");
+  root.id = "identityAppRoot";
+  document.body.appendChild(root);
 
-  if (submitButton) {
-    submitButton.textContent = value
-      ? "Please wait..."
-      : mode === "signup"
-        ? "Create account"
-        : mode === "username"
-          ? "Save username"
-          : "Sign in";
-  }
-}
+  /* ------------------------------------------------------------
+     STYLES
+  ------------------------------------------------------------ */
 
-function setMode(nextMode) {
-  mode = nextMode;
-
-  authForm.hidden = false;
-  githubButton.hidden = mode === "username";
-  switchText.hidden = mode === "username";
-  switchButton.hidden = mode === "username";
-
-  usernameField.hidden =
-    mode !== "signup" && mode !== "username";
-
-  usernameInput.required =
-    mode === "signup" || mode === "username";
-
-  emailInput.required = mode !== "username";
-  passwordInput.required = mode !== "username";
-
-  formTitle.textContent =
-    mode === "signup"
-      ? "Create your account"
-      : mode === "username"
-        ? "Choose your username"
-        : "Welcome back";
-
-  formSubtitle.textContent =
-    mode === "signup"
-      ? "Choose a username to start your playbook."
-      : mode === "username"
-        ? "Choose a unique username to finish setting up."
-        : "Sign in with email and password, or continue securely with GitHub.";
-
-  switchText.textContent =
-    mode === "signup"
-      ? "Already have an account?"
-      : "New to Identity?";
-
-  switchButton.textContent =
-    mode === "signup" ? "Sign in" : "Create account";
-
-  passwordInput.autocomplete =
-    mode === "signup" ? "new-password" : "current-password";
-
-  setBusy(false);
-  showMessage("");
-}
-
-async function saveUsername(user, username) {
-  const clean = username.trim();
-
-  if (!validUsername(clean)) {
-    throw new Error(
-      "Use 3–20 characters: letters, numbers, or underscores."
-    );
-  }
-
-  const { error } = await supabaseClient
-    .from("identity_profiles")
-    .upsert(
-      { id: user.id, username: clean },
-      { onConflict: "id" }
-    );
-
-  if (error) {
-    if (error.code === "23505") {
-      throw new Error(
-        "That username is already taken. Please choose another."
-      );
-    }
-
-    throw error;
-  }
-
-  return clean;
-}
-
-function escapeHTML(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  })[char]);
-}
-
-function showDashboard() {
-  document.querySelector("main")?.classList.add("dashboard-mode");
-  authCard.innerHTML = `
-    <div class="dashboard">
-      <p class="eyebrow">IDENTITY PLAYBOOK</p>
-      <h1>Welcome, ${escapeHTML(currentUsername)}.</h1>
-      <p class="dashboard-intro">
-        Your game. Your identity. Build your next possession.
-      </p>
-
-      <div class="dashboard-stats">
-        <div class="stat-card">
-          <span id="playCount">0</span>
-          <p>Total plays</p>
-        </div>
-        <div class="stat-card">
-          <span id="offenseCount">0</span>
-          <p>Offensive plays</p>
-        </div>
-        <div class="stat-card">
-          <span id="defenseCount">0</span>
-          <p>Defensive plays</p>
-        </div>
-      </div>
-
-      <div class="dashboard-actions">
-        <button id="showPlaysButton" type="button">My Plays</button>
-        <button id="newPlayButton" type="button">+ Create a Play</button>
-        ${
-          isEmailUser(currentUser)
-            ? '<button id="changePasswordButton" class="secondary" type="button">Change password</button>'
-            : ""
-        }
-        <button id="dashboardSignOut" class="secondary" type="button">
-          Sign out
-        </button>
-      </div>
-
-      <section id="filesSection">
-        <h2>My Files</h2>
-        <p class="files-help">
-          Upload images or PDFs up to 10 MB each. Files are stored in this app's
-          private Supabase Storage bucket, inside a folder linked to your account.
-          This screen lists files from your account folder. Supabase Storage
-          policies control who can actually access those files; those rules should
-          be tested with a second account before relying on them for privacy.
-          File sharing is not currently available, so you cannot share files with
-          another user from this app.
-        </p>
-        <p class="files-help">
-          <strong>Where files go:</strong> Supabase Storage → identity-playbook-files
-          → your account folder. Use Delete below to remove a stored file.
-        </p>
-
-        <form id="fileUploadForm">
-          <label for="fileInput">Choose an image or PDF</label>
-          <input
-            id="fileInput"
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,application/pdf,image/jpeg,image/png,image/gif,image/webp"
-            required
-          >
-          <button id="uploadFileButton" type="submit">Upload File</button>
-          <p id="fileMessage" role="status" aria-live="polite"></p>
-        </form>
-
-        <div id="filesList">
-          <p>Loading your files...</p>
-        </div>
-      </section>
-
-      <section id="playEditor" hidden>
-        <h2 id="editorTitle">Create a play</h2>
-        <form id="playForm">
-          <label for="playTitle">Play name</label>
-          <input id="playTitle" maxlength="100" required
-            placeholder="e.g. Horns Pick and Roll">
-
-          <label for="playType">Play type</label>
-          <select id="playType" required>
-            <option value="offense">Offense</option>
-            <option value="defense">Defense</option>
-          </select>
-
-          <label for="playDescription">Description and instructions</label>
-          <textarea id="playDescription" rows="5" maxlength="5000"
-            placeholder="Describe player positions, movements, and assignments..."></textarea>
-
-          <button id="savePlayButton" type="submit">Save play</button>
-          <button id="cancelPlayButton" class="secondary" type="button">Cancel</button>
-          <p id="playMessage" role="status"></p>
-        </form>
-      </section>
-
-      <section id="playsSection">
-        <h2>My Plays</h2>
-        <div id="playsList"><p>Loading your plays...</p></div>
-      </section>
-    </div>
-  `;
-
-  let style = document.getElementById("identityDashboardStyles");
-
-  if (!style) {
-    style = document.createElement("style");
-    style.id = "identityDashboardStyles";
-    document.head.appendChild(style);
-  }
+  const style = document.createElement("style");
 
   style.textContent = `
-    .dashboard { color: #f5f7fb; text-align: left; width: 100%; }
-    .dashboard h1 { font-size: clamp(1.8rem, 5vw, 2.7rem); margin: 8px 0; line-height: 1.15; }
-    .dashboard h2 { margin-top: 28px; }
-    .dashboard .eyebrow { letter-spacing: 2px; font-weight: 800; color: #ff9a52; }
-    .dashboard-intro { color: #b8c2d1; line-height: 1.6; }
-    .dashboard-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 24px 0; }
-    .stat-card, .play-card { background: #202938; border: 1px solid #354154; border-radius: 14px; padding: 17px; }
-    .stat-card span { font-size: 1.8rem; font-weight: 800; }
-    .stat-card p { color: #b8c2d1; margin-bottom: 0; font-size: .9rem; }
-    .dashboard-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-    .dashboard button { min-height: 44px; cursor: pointer; padding: 11px 16px; border: 0; border-radius: 9px; font-weight: 750; font: inherit; }
-    .dashboard button:not(.secondary) { background: #ff9a52; color: #20150e; }
-    .dashboard .secondary { background: #273244; color: #f5f7fb; border: 1px solid #536176; }
-    .dashboard button:disabled { opacity: .55; cursor: not-allowed; }
-    .dashboard label { display: block; margin-top: 14px; margin-bottom: 6px; font-weight: 650; }
-    .dashboard input, .dashboard select, .dashboard textarea { box-sizing: border-box; width: 100%; min-height: 46px; padding: 12px; border-radius: 9px; border: 1px solid #536176; background: #111925; color: #f5f7fb; font: inherit; }
-    .dashboard textarea { min-height: 120px; resize: vertical; }
-    .dashboard #playEditor { margin-top: 24px; padding: 20px; background: #182130; border: 1px solid #354154; border-radius: 14px; scroll-margin-top: 20px; }
-    .play-card { margin-bottom: 12px; }
-    .play-card h3 { margin-top: 8px; }
-    .play-card p { white-space: pre-wrap; overflow-wrap: anywhere; color: #d8dfeb; line-height: 1.6; }
-    .play-card .play-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    .play-type { color: #ffad70; text-transform: uppercase; font-size: .75rem; letter-spacing: 1px; font-weight: 800; }
-    #filesSection, #playsSection { margin-top: 28px; padding: 20px; background: #182130; border: 1px solid #354154; border-radius: 14px; scroll-margin-top: 20px; }
-    .files-help, .file-size { color: #c0cada; line-height: 1.6; }
-    #filesList { margin-top: 18px; }
-    .file-card { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; padding: 14px; background: #202938; border: 1px solid #354154; border-radius: 10px; }
-    .file-name { overflow-wrap: anywhere; flex: 1; min-width: 120px; }
-    .file-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-    .file-size { font-size: .85rem; }
-    #fileMessage, #playMessage, #passwordMessage { overflow-wrap: anywhere; min-height: 1.4em; }
-    .dashboard button:focus-visible, .dashboard input:focus-visible, .dashboard select:focus-visible, .dashboard textarea:focus-visible { outline: 3px solid #ffd0ad; outline-offset: 3px; }
-    @media (max-width: 600px) {
-      .dashboard-stats { grid-template-columns: 1fr; }
-      .dashboard-actions > button { flex: 1 1 100%; }
-      #filesSection, #playsSection, .dashboard #playEditor { padding: 15px; }
-      .file-actions { width: 100%; }
-      .file-actions button { flex: 1; }
+    #identityAppRoot {
+      --ip-bg: #101722;
+      --ip-panel: #192433;
+      --ip-panel2: #202d3e;
+      --ip-orange: #f28c28;
+      --ip-text: #f5f7fa;
+      --ip-muted: #aab6c5;
+      --ip-border: #344356;
+      color: var(--ip-text);
+      font-family: Inter, Poppins, Arial, sans-serif;
+      width: 100%;
     }
-    @media (prefers-reduced-motion: reduce) {
-      .dashboard *, .dashboard *::before, .dashboard *::after { scroll-behavior: auto !important; transition: none !important; }
+
+    #identityAppRoot * { box-sizing: border-box; }
+
+    #identityAppRoot .ip-shell {
+      max-width: 1150px;
+      margin: 30px auto;
+      padding: 20px;
+    }
+
+    #identityAppRoot .ip-card {
+      background: var(--ip-panel);
+      border: 1px solid var(--ip-border);
+      border-radius: 16px;
+      padding: 22px;
+      margin-bottom: 18px;
+    }
+
+    #identityAppRoot .ip-brand {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    #identityAppRoot .ip-brand h1 {
+      color: var(--ip-orange);
+      font-size: clamp(30px, 5vw, 48px);
+      margin: 0 0 8px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    #identityAppRoot .ip-muted {
+      color: var(--ip-muted);
+      font-size: 14px;
+    }
+
+    #identityAppRoot input,
+    #identityAppRoot textarea,
+    #identityAppRoot select {
+      display: block;
+      width: 100%;
+      background: #111b28;
+      color: white;
+      border: 1px solid var(--ip-border);
+      border-radius: 9px;
+      padding: 12px;
+      margin: 8px 0 14px;
+      font: inherit;
+    }
+
+    #identityAppRoot textarea {
+      min-height: 90px;
+      resize: vertical;
+    }
+
+    #identityAppRoot label {
+      display: block;
+      font-size: 13px;
+      color: var(--ip-muted);
+      margin-top: 10px;
+    }
+
+    #identityAppRoot button {
+      background: var(--ip-orange);
+      color: #171717;
+      border: 0;
+      border-radius: 9px;
+      padding: 11px 16px;
+      margin: 4px 5px 4px 0;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+    }
+
+    #identityAppRoot button:hover { filter: brightness(1.08); }
+
+    #identityAppRoot button.secondary {
+      background: #344356;
+      color: white;
+    }
+
+    #identityAppRoot button.danger {
+      background: #b94343;
+      color: white;
+    }
+
+    #identityAppRoot button:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    #identityAppRoot .ip-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 15px;
+    }
+
+    #identityAppRoot .ip-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-bottom: 20px;
+    }
+
+    #identityAppRoot .ip-nav button {
+      background: var(--ip-panel2);
+      color: white;
+    }
+
+    #identityAppRoot .ip-nav button.active {
+      background: var(--ip-orange);
+      color: #171717;
+    }
+
+    #identityAppRoot .ip-play {
+      background: var(--ip-panel2);
+      border: 1px solid var(--ip-border);
+      border-radius: 12px;
+      padding: 16px;
+      margin: 12px 0;
+    }
+
+    #identityAppRoot .ip-play h3 { margin-top: 0; }
+
+    #identityAppRoot .ip-status {
+      color: var(--ip-muted);
+      font-size: 13px;
+      margin: 10px 0;
+    }
+
+    #identityAppRoot .ip-message {
+      padding: 12px;
+      border-radius: 9px;
+      margin: 12px 0;
+      background: #26384b;
+      color: white;
+      overflow-wrap: anywhere;
+    }
+
+    #identityAppRoot .ip-message.error {
+      background: #552d35;
+    }
+
+    #identityAppRoot .ip-message.success {
+      background: #214536;
+    }
+
+    #identityAppRoot .ip-table-wrap { overflow-x: auto; }
+
+    #identityAppRoot table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 520px;
+      font-size: 13px;
+    }
+
+    #identityAppRoot th,
+    #identityAppRoot td {
+      border-bottom: 1px solid var(--ip-border);
+      text-align: left;
+      padding: 11px;
+      vertical-align: top;
+    }
+
+    #identityAppRoot th { color: var(--ip-orange); }
+
+    #identityAppRoot .ip-section-title {
+      color: var(--ip-orange);
+      margin-top: 0;
+    }
+
+    #identityAppRoot .ip-hidden { display: none !important; }
+
+    #identityAppRoot .ip-small {
+      font-size: 12px;
+      color: var(--ip-muted);
+    }
+
+    #identityAppRoot .ip-divider {
+      border: 0;
+      border-top: 1px solid var(--ip-border);
+      margin: 20px 0;
+    }
+
+    #identityAppRoot #ipCourtArea {
+      margin-top: 18px;
+    }
+
+    @media(max-width: 600px) {
+      #identityAppRoot .ip-shell { padding: 10px; }
+      #identityAppRoot .ip-card { padding: 16px; }
     }
   `;
 
-  if (typeof window.initCourtDesigner === "function") {
-    window.initCourtDesigner();
+  document.head.appendChild(style);
+
+  /* ------------------------------------------------------------
+     HELPERS
+  ------------------------------------------------------------ */
+
+  function escapeHTML(value) {
+    return String(value ?? "").replace(/[&<>"']/g, char => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    })[char]);
   }
 
-  $("showPlaysButton").addEventListener("click", () => {
-    $("playsSection").scrollIntoView({ behavior: "smooth" });
-  });
+  function showMessage(message, type = "") {
+    const box = document.getElementById("ipMessage");
+    if (!box) return;
 
-  $("newPlayButton").addEventListener("click", () => openEditor());
+    box.className = "ip-message " + type;
+    box.textContent = message;
+    box.classList.remove("ip-hidden");
 
-  const changePasswordButton = $("changePasswordButton");
-
-  if (changePasswordButton) {
-    changePasswordButton.addEventListener("click", showChangePasswordPage);
+    box.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
-  $("cancelPlayButton").addEventListener("click", () => {
-    $("playForm").reset();
-    $("playEditor").hidden = true;
-    delete $("playForm").dataset.editId;
-  });
-
-  $("playForm").addEventListener("submit", savePlay);
-  $("fileUploadForm").addEventListener("submit", uploadFile);
-  $("filesList").addEventListener("click", handleFileAction);
-
-  $("dashboardSignOut").addEventListener("click", async (event) => {
-    const button = event.currentTarget;
-    button.disabled = true;
-    button.textContent = "Signing out...";
-    const { error } = await supabaseClient.auth.signOut();
-
-    if (error) {
-      button.disabled = false;
-      button.textContent = "Sign out";
-      alert("Could not sign out: " + error.message);
-    } else {
-      window.location.reload();
+  function clearMessage() {
+    const box = document.getElementById("ipMessage");
+    if (box) {
+      box.textContent = "";
+      box.className = "ip-message ip-hidden";
     }
-  });
-
-  loadPlays();
-  loadUserFiles();
-}
-
-function showChangePasswordPage() {
-  document.querySelector("main")?.classList.add("dashboard-mode");
-  if (!currentUser || !isEmailUser(currentUser)) {
-    showDashboard();
-    return;
   }
 
-  authCard.innerHTML = `
-    <div class="dashboard">
-      <p class="eyebrow">IDENTITY PLAYBOOK</p>
-      <h1>Change password</h1>
-      <p class="dashboard-intro">Choose a new password for your account.</p>
+  function getValue(id) {
+    return document.getElementById(id)?.value?.trim() ?? "";
+  }
 
-      <form id="changePasswordForm">
-        <label for="newPassword">New password</label>
-        <input id="newPassword" type="password" autocomplete="new-password"
-          minlength="8" required placeholder="At least 8 characters">
+  function formatDate(value) {
+    if (!value) return "Unknown";
+    return new Date(value).toLocaleString();
+  }
 
-        <label for="confirmPassword">Confirm new password</label>
-        <input id="confirmPassword" type="password" autocomplete="new-password"
-          minlength="8" required placeholder="Enter it again">
+  function downloadJSON(filename, data) {
+    const blob = new Blob(
+      [JSON.stringify(data, null, 2)],
+      { type: "application/json" }
+    );
 
-        <button id="updatePasswordButton" type="submit">Update password</button>
-        <button id="backToDashboard" class="secondary" type="button">Back to dashboard</button>
-        <p id="passwordMessage" role="status" aria-live="polite"></p>
-      </form>
-    </div>
-  `;
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
 
-  $("backToDashboard").addEventListener("click", showDashboard);
+    link.href = url;
+    link.download = filename;
+    link.click();
 
-  $("changePasswordForm").addEventListener("submit", async (event) => {
-    event.preventDefault();
+    URL.revokeObjectURL(url);
+  }
 
-    const password = $("newPassword").value;
-    const confirmation = $("confirmPassword").value;
-    const passwordMessage = $("passwordMessage");
-    const updateButton = $("updatePasswordButton");
+  function friendlyError(error) {
+    return error?.message || "Something went wrong. Please try again.";
+  }
 
-    if (!validPassword(password)) {
-      passwordMessage.textContent = passwordRuleMessage();
-      return;
-    }
+  async function callRPC(name, args = {}) {
+    const { data, error } = await supabaseClient.rpc(name, args);
+    if (error) throw error;
+    return data;
+  }
 
-    if (password !== confirmation) {
-      passwordMessage.textContent = "Passwords do not match.";
-      return;
-    }
+  async function callFunction(name, action, args = {}) {
+    const { data, error } = await supabaseClient.functions.invoke(name, {
+      body: { action, args }
+    });
 
-    updateButton.disabled = true;
-    passwordMessage.textContent = "Updating password...";
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+
+    return data;
+  }
+
+  /* ------------------------------------------------------------
+     APPLICATION LAYOUT
+  ------------------------------------------------------------ */
+
+  function renderAuth() {
+    root.innerHTML = `
+      <div class="ip-shell">
+        <div class="ip-brand">
+          <h1>IDENTITY.</h1>
+          <div class="ip-muted">YOUR BASKETBALL PLAYBOOK</div>
+        </div>
+
+        <div class="ip-card" style="max-width:470px;margin:auto;">
+          <h2 class="ip-section-title">Welcome</h2>
+          <div id="ipMessage" class="ip-message ip-hidden"></div>
+
+          <div class="ip-nav">
+            <button id="ipLoginTab" class="active" type="button">Sign in</button>
+            <button id="ipSignupTab" class="secondary" type="button">Create account</button>
+          </div>
+
+          <form id="ipAuthForm">
+            <label>Email</label>
+            <input id="ipEmail" type="email" autocomplete="email" required>
+
+            <label>Password</label>
+            <input id="ipPassword" type="password"
+              autocomplete="current-password" required>
+
+            <div id="ipPasswordRules" class="ip-small ip-hidden">
+              Password must contain at least 8 characters, one uppercase
+              letter, one lowercase letter, and one number.
+            </div>
+
+            <button id="ipAuthSubmit" type="submit" style="width:100%">
+              Sign in
+            </button>
+          </form>
+
+          <hr class="ip-divider">
+
+          <button id="ipGithub" class="secondary" style="width:100%">
+            Continue with GitHub
+          </button>
+        </div>
+      </div>
+    `;
+
+    let mode = "login";
+
+    document.getElementById("ipLoginTab").onclick = () => {
+      mode = "login";
+      document.getElementById("ipLoginTab").className = "active";
+      document.getElementById("ipSignupTab").className = "secondary";
+      document.getElementById("ipAuthSubmit").textContent = "Sign in";
+      document.getElementById("ipPasswordRules").classList.add("ip-hidden");
+      document.getElementById("ipPassword").autocomplete = "current-password";
+      clearMessage();
+    };
+
+    document.getElementById("ipSignupTab").onclick = () => {
+      mode = "signup";
+      document.getElementById("ipSignupTab").className = "active";
+      document.getElementById("ipLoginTab").className = "secondary";
+      document.getElementById("ipAuthSubmit").textContent = "Create account";
+      document.getElementById("ipPasswordRules").classList.remove("ip-hidden");
+      document.getElementById("ipPassword").autocomplete = "new-password";
+      clearMessage();
+    };
+
+    document.getElementById("ipAuthForm").onsubmit = async event => {
+      event.preventDefault();
+      clearMessage();
+
+      const email = getValue("ipEmail");
+      const password = document.getElementById("ipPassword").value;
+
+      if (mode === "signup") {
+        const valid =
+          password.length >= 8 &&
+          /[a-z]/.test(password) &&
+          /[A-Z]/.test(password) &&
+          /[0-9]/.test(password);
+
+        if (!valid) {
+          showMessage(
+            "Use at least 8 characters, including uppercase, lowercase, and a number.",
+            "error"
+          );
+          return;
+        }
+
+        const { error } = await supabaseClient.auth.signUp({
+          email,
+          password
+        });
+
+        if (error) {
+          showMessage(friendlyError(error), "error");
+          return;
+        }
+
+        showMessage(
+          "Account created. If email confirmation is enabled, check your inbox. Otherwise, sign in.",
+          "success"
+        );
+      } else {
+        const { error } = await supabaseClient.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (error) showMessage(friendlyError(error), "error");
+      }
+    };
+
+    document.getElementById("ipGithub").onclick = async () => {
+      const { error } = await supabaseClient.auth.signInWithOAuth({
+        provider: "github",
+        options: {
+          redirectTo: window.location.origin + window.location.pathname
+        }
+      });
+
+      if (error) showMessage(friendlyError(error), "error");
+    };
+  }
+
+  function renderUsernameSetup() {
+    root.innerHTML = `
+      <div class="ip-shell">
+        <div class="ip-brand">
+          <h1>IDENTITY.</h1>
+          <div class="ip-muted">CHOOSE YOUR PLAYBOOK USERNAME</div>
+        </div>
+
+        <div class="ip-card" style="max-width:480px;margin:auto;">
+          <div id="ipMessage" class="ip-message ip-hidden"></div>
+          <h2 class="ip-section-title">Create your identity</h2>
+          <p class="ip-muted">
+            Choose a unique username. It will be shown instead of your email.
+          </p>
+
+          <form id="ipUsernameForm">
+            <label>Username</label>
+            <input id="ipUsername" maxlength="24"
+              minlength="3" placeholder="YourUsername" required>
+            <button type="submit">Save username</button>
+          </form>
+
+          <button id="ipUsernameSignout" class="secondary">Sign out</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById("ipUsernameForm").onsubmit = async event => {
+      event.preventDefault();
+
+      const username = getValue("ipUsername");
+
+      if (!/^[a-zA-Z0-9_]{3,24}$/.test(username)) {
+        showMessage(
+          "Use 3–24 letters, numbers, or underscores.",
+          "error"
+        );
+        return;
+      }
+
+      const { data: existing, error: checkError } = await supabaseClient
+        .from("identity_profiles")
+        .select("id")
+        .ilike("username", username)
+        .neq("id", currentUser.id)
+        .limit(1);
+
+      if (checkError) {
+        showMessage(friendlyError(checkError), "error");
+        return;
+      }
+
+      if (existing?.length) {
+        showMessage("That username is already taken.", "error");
+        return;
+      }
+
+      const { error } = await supabaseClient
+        .from("identity_profiles")
+        .upsert({
+          id: currentUser.id,
+          username
+        }, { onConflict: "id" });
+
+      if (error) {
+        showMessage(friendlyError(error), "error");
+        return;
+      }
+
+      await loadApplication();
+    };
+
+    document.getElementById("ipUsernameSignout").onclick = signOut;
+  }
+
+  /* ------------------------------------------------------------
+     DASHBOARD
+  ------------------------------------------------------------ */
+
+  function renderDashboard() {
+    const username = currentProfile?.username || "Player";
+
+    root.innerHTML = `
+      <div class="ip-shell">
+        <div class="ip-brand">
+          <h1>IDENTITY.</h1>
+          <div class="ip-muted">YOUR BASKETBALL PLAYBOOK</div>
+        </div>
+
+        <div class="ip-card">
+          <div class="ip-grid">
+            <div>
+              <h2 style="margin:0">Welcome, ${escapeHTML(username)}</h2>
+              <div class="ip-muted">${escapeHTML(currentRole.toUpperCase())}</div>
+            </div>
+            <div style="text-align:right">
+              <button id="ipSignout" class="secondary">Sign out</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="ipMessage" class="ip-message ip-hidden"></div>
+
+        <div class="ip-nav" id="ipNavigation">
+          <button data-tab="plays">My Plays</button>
+          <button data-tab="create">Create a Play</button>
+          <button data-tab="files">My Files</button>
+          <button data-tab="account">Account</button>
+          ${currentRole !== "user"
+            ? `<button data-tab="moderation">Staff Dashboard</button>`
+            : ""}
+        </div>
+
+        <div id="ipContent"></div>
+      </div>
+    `;
+
+    document.getElementById("ipSignout").onclick = signOut;
+
+    root.querySelectorAll("[data-tab]").forEach(button => {
+      button.onclick = () => openTab(button.dataset.tab);
+    });
+
+    openTab(currentTab);
+  }
+
+  async function openTab(tab) {
+    currentTab = tab;
+
+    root.querySelectorAll("[data-tab]").forEach(button => {
+      button.classList.toggle("active", button.dataset.tab === tab);
+      button.classList.toggle("secondary", button.dataset.tab !== tab);
+    });
+
+    const content = document.getElementById("ipContent");
+    if (!content) return;
+
+    content.innerHTML = `<div class="ip-card">Loading...</div>`;
 
     try {
-      const { error } = await supabaseClient.auth.updateUser({ password });
-      if (error) throw error;
-
-      $("changePasswordForm").reset();
-      passwordMessage.textContent = "Password updated successfully.";
+      if (tab === "plays") await renderPlays(content);
+      else if (tab === "create") renderPlayEditor(content);
+      else if (tab === "files") await renderFiles(content);
+      else if (tab === "account") await renderAccount(content);
+      else if (tab === "moderation") await renderModeration(content);
+      else content.textContent = "Page not found.";
     } catch (error) {
-      passwordMessage.textContent =
-        error.message || "Could not update your password.";
-    } finally {
-      updateButton.disabled = false;
+      content.innerHTML = `
+        <div class="ip-card">
+          <div class="ip-message error">${escapeHTML(friendlyError(error))}</div>
+        </div>
+      `;
     }
-  });
-}
-
-function setFileMessage(text, isError = false) {
-  const element = $("fileMessage");
-  if (!element) return;
-
-  element.textContent = text;
-  element.style.color = isError ? "#ff7777" : "#8fe3a1";
-}
-
-function formatFileSize(bytes) {
-  if (bytes < 1024 * 1024) {
-    return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   }
 
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-}
+  /* ------------------------------------------------------------
+     PLAYS
+  ------------------------------------------------------------ */
 
-function safeFileName(name) {
-  const baseName = name.split(/[\\/]/).pop();
+  async function renderPlays(content) {
+    const { data, error } = await supabaseClient
+      .from("identity_plays")
+      .select("*")
+      .eq("user_id", currentUser.id)
+      .order("updated_at", { ascending: false });
 
-  return baseName
-    .normalize("NFKC")
-    .replace(/[^a-zA-Z0-9._-]/g, "_")
-    .replace(/^\.+/, "")
-    .slice(0, 150) || "upload";
-}
+    if (error) throw error;
 
-function isAllowedFile(file) {
-  return ["application/pdf", "image/jpeg", "image/png", "image/gif", "image/webp"].includes(file.type);
-}
+    cachedPlays = data || [];
 
-async function loadUserFiles() {
-  const list = $("filesList");
-  if (!list || !currentUser) return;
+    content.innerHTML = `
+      <div class="ip-card">
+        <div class="ip-grid">
+          <div>
+            <h2 class="ip-section-title">My Plays</h2>
+            <p class="ip-muted">Your saved basketball plays.</p>
+          </div>
+          <div>
+            <button id="ipNewPlay">+ Create Play</button>
+          </div>
+        </div>
 
-  list.textContent = "Loading your files...";
+        <div id="ipPlayList"></div>
+      </div>
+    `;
 
-  try {
+    document.getElementById("ipNewPlay").onclick = () => openTab("create");
+
+    const list = document.getElementById("ipPlayList");
+
+    if (!cachedPlays.length) {
+      list.innerHTML = `<p class="ip-muted">You haven't created any plays yet.</p>`;
+      return;
+    }
+
+    list.innerHTML = cachedPlays.map(play => `
+      <div class="ip-play">
+        <h3>${escapeHTML(play.title)}</h3>
+        <div class="ip-muted">${escapeHTML(play.play_type || "Uncategorized")}</div>
+        <p>${escapeHTML(play.description || "No description.")}</p>
+        <div class="ip-small">Updated ${escapeHTML(formatDate(play.updated_at))}</div>
+        <hr class="ip-divider">
+        <button data-edit="${escapeHTML(play.id)}">Edit</button>
+        <button class="danger" data-delete="${escapeHTML(play.id)}">Delete</button>
+      </div>
+    `).join("");
+
+    list.querySelectorAll("[data-edit]").forEach(button => {
+      button.onclick = () => {
+        const play = cachedPlays.find(item => item.id === button.dataset.edit);
+        if (play) renderPlayEditor(content, play);
+      };
+    });
+
+    list.querySelectorAll("[data-delete]").forEach(button => {
+      button.onclick = async () => {
+        if (!confirm("Delete this play? This cannot be undone.")) return;
+
+        const { error: deleteError } = await supabaseClient
+          .from("identity_plays")
+          .delete()
+          .eq("id", button.dataset.delete)
+          .eq("user_id", currentUser.id);
+
+        if (deleteError) {
+          showMessage(friendlyError(deleteError), "error");
+          return;
+        }
+
+        showMessage("Play deleted.", "success");
+        await renderPlays(content);
+      };
+    });
+  }
+
+  function renderPlayEditor(content, play = null) {
+    currentPlayId = play?.id || null;
+
+    content.innerHTML = `
+      <div class="ip-card" id="playEditor">
+        <h2 class="ip-section-title">${play ? "Edit Play" : "Create a Play"}</h2>
+
+        <form id="playForm">
+          <label>Play title</label>
+          <input id="ipPlayTitle" maxlength="100"
+            value="${escapeHTML(play?.title || "")}" required>
+
+          <label>Play type</label>
+          <select id="ipPlayType">
+            ${["Offense", "Defense", "Inbound", "Transition", "Other"]
+              .map(type => `<option ${play?.play_type === type ? "selected" : ""}>${type}</option>`)
+              .join("")}
+          </select>
+
+          <label>Description</label>
+          <textarea id="ipPlayDescription">${escapeHTML(play?.description || "")}</textarea>
+
+          <div id="ipCourtArea">
+            <h3 class="ip-section-title">Court Designer</h3>
+            <p class="ip-muted">
+              Move the players and draw arrows to show your play.
+            </p>
+          </div>
+
+          <div style="margin-top:20px">
+            <button type="submit">${play ? "Save Changes" : "Save Play"}</button>
+            <button type="button" id="ipCancelPlay" class="secondary">Cancel</button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    document.getElementById("ipCancelPlay").onclick = () => openTab("plays");
+
+    if (typeof window.initCourtDesigner === "function") {
+      try {
+        window.initCourtDesigner();
+
+        if (play?.diagram && typeof window.loadCourtDiagram === "function") {
+          window.loadCourtDiagram(play.diagram);
+        }
+      } catch (error) {
+        console.warn("Court designer initialization:", error);
+      }
+    }
+
+    document.getElementById("playForm").onsubmit = async event => {
+      event.preventDefault();
+
+      const title = getValue("ipPlayTitle");
+      const playType = getValue("ipPlayType");
+      const description = getValue("ipPlayDescription");
+
+      let diagram = null;
+
+      if (typeof window.getCourtDiagram === "function") {
+        try {
+          diagram = window.getCourtDiagram();
+        } catch (error) {
+          console.warn("Could not read court diagram:", error);
+        }
+      }
+
+      const payload = {
+        title,
+        play_type: playType,
+        description,
+        diagram,
+        user_id: currentUser.id,
+        updated_at: new Date().toISOString()
+      };
+
+      let result;
+
+      if (currentPlayId) {
+        result = await supabaseClient
+          .from("identity_plays")
+          .update(payload)
+          .eq("id", currentPlayId)
+          .eq("user_id", currentUser.id);
+      } else {
+        payload.created_at = new Date().toISOString();
+
+        result = await supabaseClient
+          .from("identity_plays")
+          .insert(payload);
+      }
+
+      if (result.error) {
+        showMessage(friendlyError(result.error), "error");
+        return;
+      }
+
+      showMessage("Your play has been saved.", "success");
+      currentPlayId = null;
+      await openTab("plays");
+    };
+  }
+
+  /* ------------------------------------------------------------
+     PRIVATE FILE STORAGE
+  ------------------------------------------------------------ */
+
+  async function renderFiles(content) {
+    content.innerHTML = `
+      <div class="ip-card">
+        <h2 class="ip-section-title">My Files</h2>
+        <p class="ip-muted">
+          Private files stored in your account. Maximum file size: 10 MB.
+        </p>
+
+        <input id="ipFileInput" type="file"
+          accept=".jpg,.jpeg,.png,.webp,.gif,.pdf">
+
+        <button id="ipUploadFile">Upload File</button>
+        <hr class="ip-divider">
+        <div id="ipFileList">Loading files...</div>
+      </div>
+    `;
+
+    document.getElementById("ipUploadFile").onclick = uploadFile;
+
     const { data, error } = await supabaseClient.storage
-      .from(FILE_BUCKET)
+      .from(BUCKET)
       .list(currentUser.id, {
         limit: 100,
         sortBy: { column: "created_at", order: "desc" }
@@ -482,511 +827,899 @@ async function loadUserFiles() {
 
     if (error) throw error;
 
-    const files = (data || []).filter(
-      (file) => file.name && file.name !== ".emptyFolderPlaceholder"
-    );
+    const list = document.getElementById("ipFileList");
 
-    if (!files.length) {
-      list.textContent = "";
-      const empty = document.createElement("p");
-      empty.textContent = "No files yet. Upload an image or PDF above.";
-      list.appendChild(empty);
+    if (!data?.length) {
+      list.textContent = "You have no uploaded files.";
       return;
     }
 
-    list.innerHTML = files.map((file) => {
-      const path = `${currentUser.id}/${file.name}`;
-      const size = Number(file.metadata?.size || 0);
-      const originalName = originalStoredFileName(file.name);
+    list.innerHTML = data.map(file => `
+      <div class="ip-play">
+        <strong>${escapeHTML(file.name)}</strong>
+        <div class="ip-small">
+          ${escapeHTML(formatDate(file.created_at))}
+        </div>
+        <button data-download="${escapeHTML(file.name)}">Download</button>
+        <button class="danger" data-remove="${escapeHTML(file.name)}">Delete</button>
+      </div>
+    `).join("");
 
-      return `
-        <article class="file-card">
-          <div class="file-name">
-            <strong>${escapeHTML(originalName)}</strong>
-            <div class="file-size">${formatFileSize(size)}</div>
-          </div>
-          <div class="file-actions">
-            <button type="button" data-file-action="download"
-              data-file-path="${escapeHTML(path)}">Download</button>
-            <button type="button" class="secondary"
-              data-file-action="delete"
-              data-file-path="${escapeHTML(path)}">Delete</button>
-          </div>
-        </article>
-      `;
-    }).join("");
-  } catch (error) {
-    list.textContent = `Could not load files: ${error.message}`;
-  }
-}
+    list.querySelectorAll("[data-download]").forEach(button => {
+      button.onclick = async () => {
+        const path = currentUser.id + "/" + button.dataset.download;
 
-async function uploadFile(event) {
-  event.preventDefault();
+        const { data: fileData, error: fileError } =
+          await supabaseClient.storage.from(BUCKET).download(path);
 
-  if (!currentUser) {
-    setFileMessage("Please sign in again.", true);
-    return;
-  }
+        if (fileError) {
+          showMessage(friendlyError(fileError), "error");
+          return;
+        }
 
-  const input = $("fileInput");
-  const button = $("uploadFileButton");
-  const file = input.files?.[0];
+        const url = URL.createObjectURL(fileData);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = button.dataset.download;
+        link.click();
+        URL.revokeObjectURL(url);
+      };
+    });
 
-  if (!file) {
-    setFileMessage("Choose a file first.", true);
-    return;
-  }
+    list.querySelectorAll("[data-remove]").forEach(button => {
+      button.onclick = async () => {
+        if (!confirm("Delete this file?")) return;
 
-  if (!isAllowedFile(file)) {
-    setFileMessage("Choose a PDF, JPG, PNG, GIF, or WEBP file.", true);
-    return;
-  }
+        const path = currentUser.id + "/" + button.dataset.remove;
 
-  if (file.size > MAX_FILE_SIZE) {
-    setFileMessage("The file must be 10 MB or smaller.", true);
-    return;
-  }
+        const { error: removeError } = await supabaseClient
+          .storage.from(BUCKET).remove([path]);
 
-  if (file.size === 0) {
-    setFileMessage("This file is empty.", true);
-    return;
+        if (removeError) {
+          showMessage(friendlyError(removeError), "error");
+          return;
+        }
+
+        await renderFiles(content);
+        showMessage("File deleted.", "success");
+      };
+    });
   }
 
-  button.disabled = true;
-  setFileMessage("Uploading...");
+  async function uploadFile() {
+    const input = document.getElementById("ipFileInput");
+    const file = input?.files?.[0];
 
-  try {
-    const uniqueId =
-      globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
+    if (!file) {
+      showMessage("Choose a file first.", "error");
+      return;
+    }
 
-    const storedName =
-      `${Date.now()}-${uniqueId}-${safeFileName(file.name)}`;
-    const path = `${currentUser.id}/${storedName}`;
+    if (file.size > MAX_FILE_SIZE) {
+      showMessage("The file must be 10 MB or smaller.", "error");
+      return;
+    }
+
+    if (!ALLOWED_FILES.includes(file.type)) {
+      showMessage("Only JPG, PNG, WEBP, GIF, and PDF files are allowed by this app.", "error");
+      return;
+    }
+
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = currentUser.id + "/" + Date.now() + "_" + safeName;
 
     const { error } = await supabaseClient.storage
-      .from(FILE_BUCKET)
+      .from(BUCKET)
       .upload(path, file, {
+        cacheControl: "3600",
         upsert: false,
         contentType: file.type
       });
 
+    if (error) {
+      showMessage(friendlyError(error), "error");
+      return;
+    }
+
+    const content = document.getElementById("ipContent");
+    await renderFiles(content);
+    showMessage("File uploaded privately.", "success");
+  }
+
+  /* ------------------------------------------------------------
+     ACCOUNT SETTINGS
+  ------------------------------------------------------------ */
+
+  async function renderAccount(content) {
+    const { data: deletionRequests, error } = await supabaseClient
+      .from("identity_account_deletion_requests")
+      .select("*")
+      .eq("user_id", currentUser.id)
+      .order("requested_at", { ascending: false });
+
     if (error) throw error;
 
-    input.value = "";
-    setFileMessage("File uploaded successfully.");
-    await loadUserFiles();
-  } catch (error) {
-    setFileMessage(`Upload failed: ${error.message}`, true);
-  } finally {
-    button.disabled = false;
-  }
-}
+    const { data: appeals, error: appealError } = await supabaseClient
+      .from("identity_appeals")
+      .select("*")
+      .eq("user_id", currentUser.id)
+      .order("created_at", { ascending: false });
 
-async function handleFileAction(event) {
-  const button = event.target.closest("button[data-file-action]");
-  if (!button || !currentUser) return;
+    if (appealError) throw appealError;
 
-  const action = button.dataset.fileAction;
-  const path = button.dataset.filePath;
+    content.innerHTML = `
+      <div class="ip-card">
+        <h2 class="ip-section-title">Account Settings</h2>
 
-  if (!path || !path.startsWith(`${currentUser.id}/`)) {
-    setFileMessage("Invalid file path.", true);
-    return;
-  }
+        <p><strong>Username:</strong> ${escapeHTML(currentProfile?.username || "Not set")}</p>
+        <p><strong>Email:</strong> ${escapeHTML(currentUser.email || "Connected account")}</p>
 
-  button.disabled = true;
+        <hr class="ip-divider">
 
-  try {
-    if (action === "download") {
-      setFileMessage("Preparing download...");
+        <h3>Change Password</h3>
+        <p class="ip-muted">Available for email/password accounts.</p>
 
-      const { data, error } = await supabaseClient.storage
-        .from(FILE_BUCKET)
-        .download(path);
+        <label>New password</label>
+        <input id="ipNewPassword" type="password" autocomplete="new-password">
 
-      if (error) throw error;
+        <button id="ipChangePassword">Update Password</button>
 
-      const url = URL.createObjectURL(data);
-      const link = document.createElement("a");
+        <hr class="ip-divider">
 
-      link.href = url;
-      link.download = originalStoredFileName(path.split("/").pop());
+        <h3>Export My Data</h3>
+        <p class="ip-muted">Download a JSON copy of your Identity data.</p>
+        <button id="ipExportData">Export My Data</button>
 
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+        <hr class="ip-divider">
 
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
-      setFileMessage("Download started.");
-    } else if (action === "delete") {
-      const fileName = path.split("/").pop();
+        <h3>Appeals</h3>
+        <p class="ip-muted">
+          If your account has a restriction, you can submit an appeal.
+        </p>
 
-      if (!confirm(`Delete "${fileName}"? This cannot be undone.`)) return;
+        <textarea id="ipAppealReason"
+          placeholder="Explain why you are appealing..."></textarea>
+        <button id="ipSubmitAppeal">Submit Appeal</button>
 
-      setFileMessage("Deleting file...");
+        <div id="ipAppealList"></div>
 
-      const { error } = await supabaseClient.storage
-        .from(FILE_BUCKET)
-        .remove([path]);
+        <hr class="ip-divider">
 
-      if (error) throw error;
+        <h3>Account Deletion Request</h3>
+        <p class="ip-muted">
+          This submits a request for review. It does not immediately delete
+          your account or sign you out.
+        </p>
 
-      setFileMessage("File deleted.");
-      await loadUserFiles();
-    }
-  } catch (error) {
-    setFileMessage(`File action failed: ${error.message}`, true);
-  } finally {
-    button.disabled = false;
-  }
-}
+        <textarea id="ipDeletionReason"
+          placeholder="Optional reason for your request..."></textarea>
+        <button id="ipRequestDeletion" class="danger">
+          Request Account Deletion
+        </button>
 
-function openEditor(play = null) {
-  $("playEditor").hidden = false;
-  $("playForm").reset();
-  $("playMessage").textContent = "";
-
-  if (play) {
-    $("editorTitle").textContent = "Edit play";
-    $("playTitle").value = play.title;
-    $("playType").value = play.play_type;
-    $("playDescription").value = play.description || "";
-    $("playForm").dataset.editId = play.id;
-  } else {
-    $("editorTitle").textContent = "Create a play";
-    delete $("playForm").dataset.editId;
-  }
-
-  if (window.loadCourtDiagram) {
-    window.loadCourtDiagram(play ? play.diagram : null);
-  }
-
-  $("playEditor").scrollIntoView({ behavior: "smooth" });
-}
-
-async function loadPlays() {
-  const list = $("playsList");
-  if (!list || !currentUser) return;
-
-  list.textContent = "Loading your plays...";
-
-  const { data, error } = await supabaseClient
-    .from("identity_plays")
-    .select("id, title, play_type, description, diagram, created_at, updated_at")
-    .eq("user_id", currentUser.id)
-    .order("updated_at", { ascending: false });
-
-  if (error) {
-    list.textContent = "Could not load plays: " + error.message;
-    return;
-  }
-
-  plays = data || [];
-
-  $("playCount").textContent = plays.length;
-  $("offenseCount").textContent =
-    plays.filter((play) => play.play_type === "offense").length;
-  $("defenseCount").textContent =
-    plays.filter((play) => play.play_type === "defense").length;
-
-  if (plays.length === 0) {
-    list.innerHTML = `
-      <div class="play-card">
-        <h3>Your playbook starts here.</h3>
-        <p>Create your first offensive or defensive play to get started.</p>
+        <div id="ipDeletionList"></div>
       </div>
     `;
-    return;
-  }
 
-  list.innerHTML = plays.map((play) => `
-    <article class="play-card">
-      <span class="play-type">${escapeHTML(play.play_type)}</span>
-      <h3>${escapeHTML(play.title)}</h3>
-      <p>${escapeHTML(play.description || "No description yet.")}</p>
-      <div class="play-actions">
-        <button type="button" data-edit="${escapeHTML(play.id)}">Edit / Design</button>
-        <button class="secondary" type="button" data-delete="${escapeHTML(play.id)}">Delete</button>
-      </div>
-    </article>
-  `).join("");
+    document.getElementById("ipChangePassword").onclick = async () => {
+      const password = document.getElementById("ipNewPassword").value;
 
-  list.querySelectorAll("[data-edit]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const play = plays.find((item) => item.id === button.dataset.edit);
-      if (play) openEditor(play);
-    });
-  });
-
-  list.querySelectorAll("[data-delete]").forEach((button) => {
-    button.addEventListener("click", () => deletePlay(button.dataset.delete));
-  });
-}
-
-async function savePlay(event) {
-  event.preventDefault();
-
-  const saveButton = $("savePlayButton");
-  const playMessage = $("playMessage");
-
-  saveButton.disabled = true;
-  playMessage.textContent = "Saving...";
-
-  const play = {
-    title: $("playTitle").value.trim(),
-    play_type: $("playType").value,
-    description: $("playDescription").value.trim(),
-    diagram: window.getCourtDiagram ? window.getCourtDiagram() : {},
-    updated_at: new Date().toISOString()
-  };
-
-  const editId = $("playForm").dataset.editId;
-
-  try {
-    let result;
-
-    if (editId) {
-      result = await supabaseClient
-        .from("identity_plays")
-        .update(play)
-        .eq("id", editId)
-        .eq("user_id", currentUser.id);
-    } else {
-      result = await supabaseClient
-        .from("identity_plays")
-        .insert({ ...play, user_id: currentUser.id });
-    }
-
-    if (result.error) throw result.error;
-
-    playMessage.textContent = "Play saved!";
-    $("playEditor").hidden = true;
-    await loadPlays();
-  } catch (error) {
-    playMessage.textContent = error.message || "Could not save the play.";
-  } finally {
-    saveButton.disabled = false;
-  }
-}
-
-async function deletePlay(id) {
-  const play = plays.find((item) => item.id === id);
-  if (!play) return;
-
-  if (!confirm(`Delete "${play.title}"? This cannot be undone.`)) return;
-
-  const { error } = await supabaseClient
-    .from("identity_plays")
-    .delete()
-    .eq("id", id)
-    .eq("user_id", currentUser.id);
-
-  if (error) {
-    alert("Could not delete play: " + error.message);
-    return;
-  }
-
-  await loadPlays();
-}
-
-function startUsernameSetup(user, suggestedUsername = "") {
-  setupUser = user;
-  setMode("username");
-
-  usernameInput.value =
-    suggestedUsername && validUsername(suggestedUsername)
-      ? suggestedUsername
-      : "";
-
-  showMessage("Choose a unique username to finish setting up your account.");
-}
-
-async function handleSignedIn(user) {
-  currentUser = user;
-
-  const { data: profile, error } = await supabaseClient
-    .from("identity_profiles")
-    .select("username")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (error) throw error;
-
-  if (profile?.username) {
-    currentUsername = profile.username;
-    setupUser = null;
-    showDashboard();
-    return;
-  }
-
-  const suggestedUsername = user.user_metadata?.playbook_username || "";
-
-  if (suggestedUsername) {
-    try {
-      currentUsername = await saveUsername(user, suggestedUsername);
-      setupUser = null;
-      showDashboard();
-      return;
-    } catch (error) {
       if (
-        error.code === "23505" ||
-        error.message?.toLowerCase().includes("already taken")
+        password.length < 8 ||
+        !/[a-z]/.test(password) ||
+        !/[A-Z]/.test(password) ||
+        !/[0-9]/.test(password)
       ) {
-        startUsernameSetup(user, suggestedUsername);
-        showMessage("That username is already taken. Choose another.", true);
+        showMessage("Use at least 8 characters, uppercase, lowercase, and a number.", "error");
         return;
       }
 
-      throw error;
-    }
-  }
-
-  startUsernameSetup(user);
-}
-
-authForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  if (busy) return;
-
-  setBusy(true);
-  showMessage("");
-
-  try {
-    const email = emailInput.value.trim();
-    const password = passwordInput.value;
-
-    if (mode === "signup") {
-      const username = usernameInput.value.trim();
-
-      if (!validPassword(password)) {
-        throw new Error(passwordRuleMessage());
-      }
-
-      if (!validUsername(username)) {
-        throw new Error(
-          "Use 3–20 characters: letters, numbers, or underscores."
-        );
-      }
-
-      const { data, error } = await supabaseClient.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: window.location.origin + window.location.pathname,
-          data: { playbook_username: username }
-        }
+      const { error: updateError } = await supabaseClient.auth.updateUser({
+        password
       });
 
-      if (error) throw error;
+      if (updateError) showMessage(friendlyError(updateError), "error");
+      else showMessage("Password updated.", "success");
+    };
 
-      if (data.session && data.user) {
-        await handleSignedIn(data.user);
+    document.getElementById("ipExportData").onclick = async () => {
+      try {
+        const result = await callRPC("identity_export_my_data");
+        downloadJSON("identity-playbook-data.json", result);
+        showMessage("Your data export has been prepared.", "success");
+      } catch (error) {
+        showMessage(friendlyError(error), "error");
+      }
+    };
+
+    document.getElementById("ipSubmitAppeal").onclick = async () => {
+      const reason = getValue("ipAppealReason");
+
+      if (reason.length < 5) {
+        showMessage("Please provide at least 5 characters.", "error");
+        return;
+      }
+
+      try {
+        await callRPC("identity_submit_appeal", {
+          p_reason: reason
+        });
+
+        showMessage("Your appeal has been submitted.", "success");
+        await renderAccount(content);
+      } catch (error) {
+        showMessage(friendlyError(error), "error");
+      }
+    };
+
+    document.getElementById("ipRequestDeletion").onclick = async () => {
+      if (!confirm("Submit an account deletion request?")) return;
+
+      try {
+        await callRPC("identity_request_account_deletion", {
+          p_reason: getValue("ipDeletionReason") || null
+        });
+
+        showMessage("Your deletion request has been submitted for review.", "success");
+        await renderAccount(content);
+      } catch (error) {
+        showMessage(friendlyError(error), "error");
+      }
+    };
+
+    const appealList = document.getElementById("ipAppealList");
+
+    appealList.innerHTML = appeals?.length
+      ? appeals.map(item => `
+          <div class="ip-play">
+            <strong>${escapeHTML(item.status)}</strong>
+            <p>${escapeHTML(item.reason)}</p>
+            <div class="ip-small">${escapeHTML(formatDate(item.created_at))}</div>
+            ${item.review_notes
+              ? `<p>${escapeHTML(item.review_notes)}</p>`
+              : ""}
+          </div>
+        `).join("")
+      : `<p class="ip-muted">No appeals submitted.</p>`;
+
+    const deletionList = document.getElementById("ipDeletionList");
+
+    deletionList.innerHTML = deletionRequests?.length
+      ? deletionRequests.map(item => `
+          <div class="ip-play">
+            <strong>Request: ${escapeHTML(item.status)}</strong>
+            <div class="ip-small">${escapeHTML(formatDate(item.requested_at))}</div>
+            ${item.review_notes
+              ? `<p>${escapeHTML(item.review_notes)}</p>`
+              : ""}
+            ${item.status === "pending"
+              ? `<button class="secondary" data-cancel-deletion="${escapeHTML(item.id)}">Cancel Request</button>`
+              : ""}
+          </div>
+        `).join("")
+      : `<p class="ip-muted">No deletion requests.</p>`;
+
+    deletionList.querySelectorAll("[data-cancel-deletion]").forEach(button => {
+      button.onclick = async () => {
+        try {
+          await callRPC("identity_cancel_account_deletion");
+          showMessage("Your pending deletion request was cancelled.", "success");
+          await renderAccount(content);
+        } catch (error) {
+          showMessage(friendlyError(error), "error");
+        }
+      };
+    });
+  }
+
+  /* ------------------------------------------------------------
+     STAFF DASHBOARD
+  ------------------------------------------------------------ */
+
+  async function renderModeration(content) {
+    const isAdmin = currentRole === "admin";
+
+    content.innerHTML = `
+      <div class="ip-card">
+        <h2 class="ip-section-title">
+          ${isAdmin ? "Administrator Dashboard" : "Moderator Dashboard"}
+        </h2>
+
+        <p class="ip-muted">
+          Staff actions are checked by Supabase permissions and database functions.
+        </p>
+
+        <div class="ip-nav" id="ipStaffNav">
+          <button data-staff-tab="reports">Reports</button>
+          <button data-staff-tab="plays">Hidden Plays</button>
+          <button data-staff-tab="users">User Actions</button>
+          ${isAdmin ? `
+            <button data-staff-tab="bans">Ban Requests</button>
+            <button data-staff-tab="appeals">Appeals</button>
+            <button data-staff-tab="moderators">Moderators</button>
+            <button data-staff-tab="deletions">Deletion Requests</button>
+            <button data-staff-tab="logs">Moderation Logs</button>
+          ` : ""}
+        </div>
+
+        <div id="ipStaffContent"></div>
+      </div>
+    `;
+
+    root.querySelectorAll("[data-staff-tab]").forEach(button => {
+      button.onclick = () => {
+        root.querySelectorAll("[data-staff-tab]").forEach(item => {
+          item.classList.toggle("active", item === button);
+          item.classList.toggle("secondary", item !== button);
+        });
+
+        renderStaffSection(button.dataset.staffTab);
+      };
+    });
+
+    const first = root.querySelector("[data-staff-tab]");
+    first?.click();
+  }
+
+  async function renderStaffSection(section) {
+    const panel = document.getElementById("ipStaffContent");
+    if (!panel) return;
+
+    panel.innerHTML = `<p class="ip-muted">Loading...</p>`;
+
+    try {
+      if (section === "reports") await renderStaffReports(panel);
+      else if (section === "plays") await renderHiddenPlays(panel);
+      else if (section === "users") renderUserActions(panel);
+      else if (section === "bans") await renderBanRequests(panel);
+      else if (section === "appeals") await renderStaffAppeals(panel);
+      else if (section === "moderators") await renderModerators(panel);
+      else if (section === "deletions") await renderDeletionRequests(panel);
+      else if (section === "logs") await renderModerationLogs(panel);
+    } catch (error) {
+      panel.innerHTML = `
+        <div class="ip-message error">${escapeHTML(friendlyError(error))}</div>
+      `;
+    }
+  }
+
+  async function renderStaffReports(panel) {
+    const { data, error } = await supabaseClient
+      .from("identity_reports")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (error) throw error;
+
+    panel.innerHTML = `
+      <h3>Reports</h3>
+      ${data?.length ? data.map(report => `
+        <div class="ip-play">
+          <strong>${escapeHTML(report.status.toUpperCase())}</strong>
+          <p><strong>Reason:</strong> ${escapeHTML(report.reason)}</p>
+          <p>${escapeHTML(report.details || "No extra details.")}</p>
+          <div class="ip-small">
+            Report ID: ${escapeHTML(report.id)}<br>
+            Play ID: ${escapeHTML(report.play_id || "Unavailable")}<br>
+            Reported user: ${escapeHTML(report.reported_user_id || "Unavailable")}<br>
+            Submitted: ${escapeHTML(formatDate(report.created_at))}
+          </div>
+
+          ${report.status === "pending" ? `
+            <textarea id="ipReportNotes_${escapeHTML(report.id)}"
+              placeholder="Review notes (optional)"></textarea>
+            <button data-report-action="reviewed" data-id="${escapeHTML(report.id)}">
+              Mark Reviewed
+            </button>
+            <button class="secondary"
+              data-report-action="dismissed" data-id="${escapeHTML(report.id)}">
+              Dismiss
+            </button>
+          ` : ""}
+        </div>
+      `).join("") : `<p class="ip-muted">No reports found.</p>`}
+    `;
+
+    panel.querySelectorAll("[data-report-action]").forEach(button => {
+      button.onclick = async () => {
+        try {
+          await callFunction("identity-moderation", "review_report", {
+            p_report_id: button.dataset.id,
+            p_status: button.dataset.reportAction,
+            p_notes: getValue("ipReportNotes_" + button.dataset.id) || null
+          });
+
+          showMessage("Report updated.", "success");
+          await renderStaffReports(panel);
+        } catch (error) {
+          showMessage(friendlyError(error), "error");
+        }
+      };
+    });
+  }
+
+  async function renderHiddenPlays(panel) {
+    const { data, error } = await supabaseClient
+      .from("identity_hidden_plays")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    panel.innerHTML = `
+      <h3>Hidden Plays</h3>
+      ${data?.length ? data.map(item => `
+        <div class="ip-play">
+          <strong>Play ID: ${escapeHTML(item.play_id)}</strong>
+          <p>${escapeHTML(item.reason)}</p>
+          <div class="ip-small">${escapeHTML(formatDate(item.created_at))}</div>
+          <button data-restore-play="${escapeHTML(item.play_id)}">
+            Restore Play
+          </button>
+          ${currentRole === "admin" ? `
+            <button class="danger" data-delete-play="${escapeHTML(item.play_id)}">
+              Permanently Delete
+            </button>
+          ` : ""}
+        </div>
+      `).join("") : `<p class="ip-muted">No hidden plays.</p>`}
+    `;
+
+    panel.querySelectorAll("[data-restore-play]").forEach(button => {
+      button.onclick = async () => {
+        try {
+          await callFunction("identity-moderation", "restore_play", {
+            p_play_id: button.dataset.restorePlay
+          });
+
+          showMessage("Play restored.", "success");
+          await renderHiddenPlays(panel);
+        } catch (error) {
+          showMessage(friendlyError(error), "error");
+        }
+      };
+    });
+
+    panel.querySelectorAll("[data-delete-play]").forEach(button => {
+      button.onclick = async () => {
+        if (!confirm("Permanently delete this play?")) return;
+
+        try {
+          await callFunction("identity-admin", "delete_play", {
+            p_play_id: button.dataset.deletePlay
+          });
+
+          showMessage("Play deleted.", "success");
+          await renderHiddenPlays(panel);
+        } catch (error) {
+          showMessage(friendlyError(error), "error");
+        }
+      };
+    });
+  }
+
+  function renderUserActions(panel) {
+    panel.innerHTML = `
+      <h3>User Actions</h3>
+      <p class="ip-muted">
+        Enter the user's Supabase Auth UUID. Do not use their email address here.
+      </p>
+
+      <label>User UUID</label>
+      <input id="ipTargetUser" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+
+      <label>Reason</label>
+      <textarea id="ipActionReason" placeholder="Explain the reason..."></textarea>
+
+      <label>Suspension duration in hours</label>
+      <input id="ipSuspensionHours" type="number" min="1" value="24">
+
+      <button id="ipSuspendUser">Suspend User</button>
+      <button id="ipRequestBan" class="danger">Request Permanent Ban</button>
+
+      ${currentRole === "admin" ? `
+        <hr class="ip-divider">
+        <button id="ipLiftRestriction" class="secondary">Lift Restriction</button>
+      ` : ""}
+    `;
+
+    document.getElementById("ipSuspendUser").onclick = async () => {
+      try {
+        await callFunction("identity-moderation", "suspend_user", {
+          p_user_id: getValue("ipTargetUser"),
+          p_reason: getValue("ipActionReason"),
+          p_duration_hours: Number(getValue("ipSuspensionHours"))
+        });
+
+        showMessage("Suspension recorded.", "success");
+      } catch (error) {
+        showMessage(friendlyError(error), "error");
+      }
+    };
+
+    document.getElementById("ipRequestBan").onclick = async () => {
+      if (!confirm("Submit a permanent-ban request for administrator review?")) return;
+
+      try {
+        await callFunction("identity-moderation", "request_ban", {
+          p_user_id: getValue("ipTargetUser"),
+          p_reason: getValue("ipActionReason")
+        });
+
+        showMessage("Permanent-ban request submitted for administrator review.", "success");
+      } catch (error) {
+        showMessage(friendlyError(error), "error");
+      }
+    };
+
+    if (currentRole === "admin") {
+      document.getElementById("ipLiftRestriction").onclick = async () => {
+        try {
+          await callFunction("identity-admin", "lift_restriction", {
+            p_user_id: getValue("ipTargetUser"),
+            p_reason: getValue("ipActionReason") || null
+          });
+
+          showMessage("Restriction removed from the database.", "success");
+        } catch (error) {
+          showMessage(friendlyError(error), "error");
+        }
+      };
+    }
+  }
+
+  async function renderBanRequests(panel) {
+    const { data, error } = await supabaseClient
+      .from("identity_ban_requests")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    panel.innerHTML = `
+      <h3>Permanent Ban Requests</h3>
+      ${data?.length ? data.map(item => `
+        <div class="ip-play">
+          <strong>${escapeHTML(item.status.toUpperCase())}</strong>
+          <p><strong>User:</strong> ${escapeHTML(item.target_user_id)}</p>
+          <p>${escapeHTML(item.reason)}</p>
+          <div class="ip-small">${escapeHTML(formatDate(item.created_at))}</div>
+
+          ${item.status === "pending" ? `
+            <textarea id="ipBanNotes_${escapeHTML(item.id)}"
+              placeholder="Review notes"></textarea>
+            <button data-ban-decision="approved" data-id="${escapeHTML(item.id)}">
+              Approve
+            </button>
+            <button class="secondary" data-ban-decision="rejected"
+              data-id="${escapeHTML(item.id)}">Reject</button>
+          ` : ""}
+        </div>
+      `).join("") : `<p class="ip-muted">No ban requests.</p>`}
+    `;
+
+    panel.querySelectorAll("[data-ban-decision]").forEach(button => {
+      button.onclick = async () => {
+        try {
+          await callFunction("identity-admin", "review_ban", {
+            p_request_id: button.dataset.id,
+            p_decision: button.dataset.banDecision,
+            p_notes: getValue("ipBanNotes_" + button.dataset.id) || null
+          });
+
+          showMessage("Ban request reviewed.", "success");
+          await renderBanRequests(panel);
+        } catch (error) {
+          showMessage(friendlyError(error), "error");
+        }
+      };
+    });
+  }
+
+  async function renderStaffAppeals(panel) {
+    const { data, error } = await supabaseClient
+      .from("identity_appeals")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    panel.innerHTML = `
+      <h3>Appeals</h3>
+      ${data?.length ? data.map(item => `
+        <div class="ip-play">
+          <strong>${escapeHTML(item.status.toUpperCase())}</strong>
+          <p><strong>User:</strong> ${escapeHTML(item.user_id)}</p>
+          <p>${escapeHTML(item.reason)}</p>
+          <div class="ip-small">${escapeHTML(formatDate(item.created_at))}</div>
+
+          ${item.status === "pending" ? `
+            <textarea id="ipAppealNotes_${escapeHTML(item.id)}"
+              placeholder="Review notes"></textarea>
+            <button data-appeal-decision="approved" data-id="${escapeHTML(item.id)}">
+              Approve Appeal
+            </button>
+            <button class="secondary" data-appeal-decision="rejected"
+              data-id="${escapeHTML(item.id)}">Reject Appeal</button>
+          ` : ""}
+        </div>
+      `).join("") : `<p class="ip-muted">No appeals found.</p>`}
+    `;
+
+    panel.querySelectorAll("[data-appeal-decision]").forEach(button => {
+      button.onclick = async () => {
+        try {
+          await callFunction("identity-admin", "review_appeal", {
+            p_appeal_id: button.dataset.id,
+            p_decision: button.dataset.appealDecision,
+            p_notes: getValue("ipAppealNotes_" + button.dataset.id) || null
+          });
+
+          showMessage("Appeal reviewed.", "success");
+          await renderStaffAppeals(panel);
+        } catch (error) {
+          showMessage(friendlyError(error), "error");
+        }
+      };
+    });
+  }
+
+  async function renderModerators(panel) {
+    const { data, error } = await supabaseClient
+      .from("identity_moderators")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    panel.innerHTML = `
+      <h3>Manage Moderators</h3>
+
+      <label>User UUID</label>
+      <input id="ipModeratorUser" placeholder="Supabase Auth UUID">
+
+      <button id="ipAddModerator">Add Moderator</button>
+
+      <hr class="ip-divider">
+
+      <h3>Current Moderators</h3>
+
+      ${data?.length ? data.map(item => `
+        <div class="ip-play">
+          <strong>${escapeHTML(item.user_id)}</strong>
+          <div class="ip-small">Added ${escapeHTML(formatDate(item.created_at))}</div>
+          <button class="danger" data-remove-moderator="${escapeHTML(item.user_id)}">
+            Remove Moderator
+          </button>
+        </div>
+      `).join("") : `<p class="ip-muted">No moderators added.</p>`}
+    `;
+
+    document.getElementById("ipAddModerator").onclick = async () => {
+      try {
+        await callFunction("identity-admin", "add_moderator", {
+          p_user_id: getValue("ipModeratorUser")
+        });
+
+        showMessage("Moderator added.", "success");
+        await renderModerators(panel);
+      } catch (error) {
+        showMessage(friendlyError(error), "error");
+      }
+    };
+
+    panel.querySelectorAll("[data-remove-moderator]").forEach(button => {
+      button.onclick = async () => {
+        if (!confirm("Remove this moderator?")) return;
+
+        try {
+          await callFunction("identity-admin", "remove_moderator", {
+            p_user_id: button.dataset.removeModerator
+          });
+
+          showMessage("Moderator removed.", "success");
+          await renderModerators(panel);
+        } catch (error) {
+          showMessage(friendlyError(error), "error");
+        }
+      };
+    });
+  }
+
+  async function renderDeletionRequests(panel) {
+    const { data, error } = await supabaseClient
+      .from("identity_account_deletion_requests")
+      .select("*")
+      .order("requested_at", { ascending: false });
+
+    if (error) throw error;
+
+    panel.innerHTML = `
+      <h3>Account Deletion Requests</h3>
+      <p class="ip-muted">
+        These are requests only. This dashboard does not permanently delete
+        Supabase Auth accounts.
+      </p>
+
+      ${data?.length ? data.map(item => `
+        <div class="ip-play">
+          <strong>${escapeHTML(item.status.toUpperCase())}</strong>
+          <p><strong>User:</strong> ${escapeHTML(item.user_id)}</p>
+          <p>${escapeHTML(item.reason || "No reason provided.")}</p>
+          <div class="ip-small">${escapeHTML(formatDate(item.requested_at))}</div>
+        </div>
+      `).join("") : `<p class="ip-muted">No deletion requests.</p>`}
+    `;
+  }
+
+  async function renderModerationLogs(panel) {
+    const { data, error } = await supabaseClient
+      .from("identity_moderation_logs")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (error) throw error;
+
+    panel.innerHTML = `
+      <h3>Moderation Logs</h3>
+      ${data?.length ? `
+        <div class="ip-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>Actor</th>
+                <th>Target User</th>
+                <th>Date</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.map(item => `
+                <tr>
+                  <td>${escapeHTML(item.action)}</td>
+                  <td>${escapeHTML(item.actor_id || "System")}</td>
+                  <td>${escapeHTML(item.target_user_id || "—")}</td>
+                  <td>${escapeHTML(formatDate(item.created_at))}</td>
+                  <td>${escapeHTML(JSON.stringify(item.details || {}))}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      ` : `<p class="ip-muted">No moderation logs found.</p>`}
+    `;
+  }
+
+  /* ------------------------------------------------------------
+     SESSION, ROLE, AND PROFILE
+  ------------------------------------------------------------ */
+
+  async function signOut() {
+    const { error } = await supabaseClient.auth.signOut();
+
+    if (error) {
+      showMessage(friendlyError(error), "error");
+      return;
+    }
+
+    currentUser = null;
+    currentProfile = null;
+    currentRole = "user";
+    currentPlayId = null;
+    currentTab = "plays";
+
+    renderAuth();
+  }
+
+  async function loadApplication() {
+    const { data: sessionData, error: sessionError } =
+      await supabaseClient.auth.getSession();
+
+    if (sessionError) {
+      renderAuth();
+      return;
+    }
+
+    currentUser = sessionData.session?.user || null;
+
+    if (!currentUser) {
+      renderAuth();
+      return;
+    }
+
+    const { data: profile, error: profileError } = await supabaseClient
+      .from("identity_profiles")
+      .select("*")
+      .eq("id", currentUser.id)
+      .maybeSingle();
+
+    if (profileError) {
+      root.innerHTML = `
+        <div class="ip-shell">
+          <div class="ip-card">
+            <div class="ip-message error">${escapeHTML(friendlyError(profileError))}</div>
+            <button id="ipRetry">Retry</button>
+            <button id="ipErrorSignout" class="secondary">Sign out</button>
+          </div>
+        </div>
+      `;
+
+      document.getElementById("ipRetry").onclick = loadApplication;
+      document.getElementById("ipErrorSignout").onclick = signOut;
+      return;
+    }
+
+    currentProfile = profile;
+
+    if (!currentProfile?.username) {
+      renderUsernameSetup();
+      return;
+    }
+
+    currentRole = "user";
+
+    try {
+      const isAdmin = await callRPC("identity_is_admin");
+      const isModerator = await callRPC("identity_is_moderator");
+
+      if (isAdmin) currentRole = "admin";
+      else if (isModerator) currentRole = "moderator";
+    } catch (error) {
+      console.warn("Could not check staff role:", error);
+    }
+
+    try {
+      const active = await callRPC("identity_account_is_active");
+
+      if (!active) {
+        root.innerHTML = `
+          <div class="ip-shell">
+            <div class="ip-card">
+              <h2 class="ip-section-title">Account Restricted</h2>
+              <p>
+                Your account currently has a restriction. You can sign out
+                or visit Account Settings to submit an appeal.
+              </p>
+              <button id="ipRestrictedSignout">Sign out</button>
+            </div>
+          </div>
+        `;
+
+        document.getElementById("ipRestrictedSignout").onclick = signOut;
+        return;
+      }
+    } catch (error) {
+      console.warn("Could not check account status:", error);
+    }
+
+    renderDashboard();
+  }
+
+  /* ------------------------------------------------------------
+     INITIALIZATION
+  ------------------------------------------------------------ */
+
+  async function initializeApp() {
+    await loadApplication();
+
+    supabaseClient.auth.onAuthStateChange((_event, session) => {
+      currentUser = session?.user || null;
+
+      if (!currentUser) {
+        currentProfile = null;
+        currentRole = "user";
+        renderAuth();
       } else {
-        setMode("login");
-        showMessage(
-          "Account created. Confirm your email, then sign in to finish setup."
-        );
-      }
-
-      return;
-    }
-
-    if (mode === "username") {
-      if (!setupUser) {
-        throw new Error("Your session expired. Please sign in again.");
-      }
-
-      const username = usernameInput.value.trim();
-
-      if (!validUsername(username)) {
-        throw new Error(
-          "Use 3–20 characters: letters, numbers, or underscores."
-        );
-      }
-
-      currentUsername = await saveUsername(setupUser, username);
-      currentUser = setupUser;
-      setupUser = null;
-      showDashboard();
-      return;
-    }
-
-    const { data, error } = await supabaseClient.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (error) throw error;
-    await handleSignedIn(data.user);
-  } catch (error) {
-    showMessage(error.message || "Something went wrong. Please try again.", true);
-  } finally {
-    setBusy(false);
-  }
-});
-
-switchButton.addEventListener("click", () => {
-  if (busy) return;
-
-  if (mode === "username" && setupUser) {
-    showMessage("Please finish choosing your username first.", true);
-    return;
-  }
-
-  setMode(mode === "login" ? "signup" : "login");
-});
-
-githubButton.addEventListener("click", async () => {
-  if (busy) return;
-
-  setBusy(true);
-  showMessage("");
-
-  try {
-    const { error } = await supabaseClient.auth.signInWithOAuth({
-      provider: "github",
-      options: {
-        redirectTo: window.location.origin + window.location.pathname
+        setTimeout(loadApplication, 0);
       }
     });
-
-    if (error) throw error;
-  } catch (error) {
-    showMessage(error.message || "GitHub sign-in could not start.", true);
-    setBusy(false);
   }
-});
 
-async function initializeApp() {
-  try {
-    const { data, error } = await supabaseClient.auth.getSession();
+  window.initializeIdentityApp = initializeApp;
 
-    if (error) throw error;
+  initializeApp();
 
-    if (data.session) {
-      await handleSignedIn(data.session.user);
-    }
-  } catch (error) {
-    showMessage(error.message || "Could not load your session.", true);
-  }
-}
-
-supabaseClient.auth.onAuthStateChange((event) => {
-  if (event === "SIGNED_OUT") {
-    window.location.reload();
-  }
-});
-
-// Set up the login screen, but wait for Privacy Policy acceptance
-// before restoring an existing session.
-setMode("login");
-
-window.initializeIdentityApp = initializeApp;
-
-try {
-  if (localStorage.getItem("identityPrivacyAccepted") === "v1") {
-    initializeApp();
-  }
-} catch (error) {
-  console.warn("Could not check Privacy Policy acceptance:", error);
-}
+})();
