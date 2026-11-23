@@ -1,4 +1,3 @@
-
 /* ============================================================
    IDENTITY. PLAYBOOK — BUILD 3
    Complete frontend application
@@ -264,18 +263,16 @@
   }
 
   function showMessage(message, type = "") {
-    const box = document.getElementById("ipMessage");
+    const box = document.getElementById("ipMessage") || document.getElementById("message");
     if (!box) return;
 
     box.className = "ip-message " + type;
     box.textContent = message;
     box.classList.remove("ip-hidden");
-
-    box.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
   function clearMessage() {
-    const box = document.getElementById("ipMessage");
+    const box = document.getElementById("ipMessage") || document.getElementById("message");
     if (box) {
       box.textContent = "";
       box.className = "ip-message ip-hidden";
@@ -333,130 +330,107 @@
   ------------------------------------------------------------ */
 
   function renderAuth() {
-    root.innerHTML = `
-      <div class="ip-shell">
-        <div class="ip-brand">
-          <h1>IDENTITY.</h1>
-          <div class="ip-muted">YOUR BASKETBALL PLAYBOOK</div>
-        </div>
+    // Use the original sign-in card in index.html; do not create a duplicate.
+    document.body.classList.add("ip-auth");
+    root.innerHTML = "";
 
-        <div class="ip-card" style="max-width:470px;margin:auto;">
-          <h2 class="ip-section-title">Welcome</h2>
-          <div id="ipMessage" class="ip-message ip-hidden"></div>
+    const form = document.getElementById("authForm");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const submitButton = document.getElementById("submitButton");
+    const githubButton = document.getElementById("githubButton");
+    const switchButton = document.getElementById("switchButton");
+    const title = document.getElementById("formTitle");
+    const subtitle = document.getElementById("formSubtitle");
+    const switchText = document.getElementById("switchText");
+    const rules = document.getElementById("passwordRules");
 
-          <div class="ip-nav">
-            <button id="ipLoginTab" class="active" type="button">Sign in</button>
-            <button id="ipSignupTab" class="secondary" type="button">Create account</button>
-          </div>
-
-          <form id="ipAuthForm">
-            <label>Email</label>
-            <input id="ipEmail" type="email" autocomplete="email" required>
-
-            <label>Password</label>
-            <input id="ipPassword" type="password"
-              autocomplete="current-password" required>
-
-            <div id="ipPasswordRules" class="ip-small ip-hidden">
-              Password must contain at least 8 characters, one uppercase
-              letter, one lowercase letter, and one number.
-            </div>
-
-            <button id="ipAuthSubmit" type="submit" style="width:100%">
-              Sign in
-            </button>
-          </form>
-
-          <hr class="ip-divider">
-
-          <button id="ipGithub" class="secondary" style="width:100%">
-            Continue with GitHub
-          </button>
-        </div>
-      </div>
-    `;
+    if (!form || !emailInput || !passwordInput || !submitButton || !githubButton || !switchButton) {
+      showMessage("The sign-in form could not be found. Please check index.html.", "error");
+      return;
+    }
 
     let mode = "login";
-
-    document.getElementById("ipLoginTab").onclick = () => {
-      mode = "login";
-      document.getElementById("ipLoginTab").className = "active";
-      document.getElementById("ipSignupTab").className = "secondary";
-      document.getElementById("ipAuthSubmit").textContent = "Sign in";
-      document.getElementById("ipPasswordRules").classList.add("ip-hidden");
-      document.getElementById("ipPassword").autocomplete = "current-password";
+    const setMode = nextMode => {
+      mode = nextMode;
+      const signingUp = mode === "signup";
+      if (title) title.textContent = signingUp ? "Create your account" : "Welcome back";
+      if (subtitle) subtitle.textContent = signingUp
+        ? "Create an account to start building your basketball playbook."
+        : "Sign in to get back to your playbook.";
+      submitButton.textContent = signingUp ? "Create account" : "Sign in";
+      switchText.textContent = signingUp ? "Already have an account?" : "New to Identity?";
+      switchButton.textContent = signingUp ? "Sign in" : "Create account";
+      passwordInput.autocomplete = signingUp ? "new-password" : "current-password";
+      if (rules) rules.hidden = !signingUp;
       clearMessage();
     };
 
-    document.getElementById("ipSignupTab").onclick = () => {
-      mode = "signup";
-      document.getElementById("ipSignupTab").className = "active";
-      document.getElementById("ipLoginTab").className = "secondary";
-      document.getElementById("ipAuthSubmit").textContent = "Create account";
-      document.getElementById("ipPasswordRules").classList.remove("ip-hidden");
-      document.getElementById("ipPassword").autocomplete = "new-password";
-      clearMessage();
-    };
-
-    document.getElementById("ipAuthForm").onsubmit = async event => {
+    form.onsubmit = async event => {
       event.preventDefault();
       clearMessage();
-
-      const email = getValue("ipEmail");
-      const password = document.getElementById("ipPassword").value;
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+      if (!email || !password) {
+        showMessage("Enter your email and password.", "error");
+        return;
+      }
 
       if (mode === "signup") {
-        const valid =
-          password.length >= 8 &&
-          /[a-z]/.test(password) &&
-          /[A-Z]/.test(password) &&
-          /[0-9]/.test(password);
-
+        const valid = password.length >= 8 && /[a-z]/.test(password) &&
+          /[A-Z]/.test(password) && /[0-9]/.test(password);
         if (!valid) {
-          showMessage(
-            "Use at least 8 characters, including uppercase, lowercase, and a number.",
-            "error"
-          );
+          showMessage("Use at least 8 characters, including uppercase, lowercase, and a number.", "error");
           return;
         }
+      }
 
-        const { error } = await supabaseClient.auth.signUp({
-          email,
-          password
-        });
-
-        if (error) {
-          showMessage(friendlyError(error), "error");
-          return;
+      submitButton.disabled = true;
+      githubButton.disabled = true;
+      try {
+        if (mode === "signup") {
+          const { data, error } = await supabaseClient.auth.signUp({ email, password });
+          if (error) throw error;
+          if (data?.session) {
+            showMessage("Account created. Loading your playbook...", "success");
+            setTimeout(loadApplication, 0);
+          } else {
+            showMessage("Account created. Check your email if confirmation is enabled, then sign in.", "success");
+            setMode("login");
+          }
+        } else {
+          const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+          if (error) throw error;
         }
-
-        showMessage(
-          "Account created. If email confirmation is enabled, check your inbox. Otherwise, sign in.",
-          "success"
-        );
-      } else {
-        const { error } = await supabaseClient.auth.signInWithPassword({
-          email,
-          password
-        });
-
-        if (error) showMessage(friendlyError(error), "error");
+      } catch (error) {
+        showMessage(friendlyError(error), "error");
+      } finally {
+        submitButton.disabled = false;
+        githubButton.disabled = false;
       }
     };
 
-    document.getElementById("ipGithub").onclick = async () => {
-      const { error } = await supabaseClient.auth.signInWithOAuth({
-        provider: "github",
-        options: {
-          redirectTo: window.location.origin + window.location.pathname
-        }
-      });
-
-      if (error) showMessage(friendlyError(error), "error");
+    switchButton.onclick = () => setMode(mode === "login" ? "signup" : "login");
+    githubButton.onclick = async () => {
+      clearMessage();
+      githubButton.disabled = true;
+      try {
+        const { error } = await supabaseClient.auth.signInWithOAuth({
+          provider: "github",
+          options: { redirectTo: window.location.origin + window.location.pathname }
+        });
+        if (error) throw error;
+      } catch (error) {
+        showMessage(friendlyError(error), "error");
+        githubButton.disabled = false;
+      }
     };
+
+    setMode("login");
   }
 
   function renderUsernameSetup() {
+    document.body.classList.remove("ip-auth");
     root.innerHTML = `
       <div class="ip-shell">
         <div class="ip-brand">
@@ -536,6 +510,7 @@
   ------------------------------------------------------------ */
 
   function renderDashboard() {
+    document.body.classList.remove("ip-auth");
     const username = currentProfile?.username || "Player";
 
     root.innerHTML = `
@@ -1702,20 +1677,28 @@
      INITIALIZATION
   ------------------------------------------------------------ */
 
+  let initializationStarted = false;
+  let authListenerRegistered = false;
+
   async function initializeApp() {
+    if (initializationStarted) return;
+    initializationStarted = true;
     await loadApplication();
 
-    supabaseClient.auth.onAuthStateChange((_event, session) => {
-      currentUser = session?.user || null;
+    if (!authListenerRegistered) {
+      authListenerRegistered = true;
+      supabaseClient.auth.onAuthStateChange((_event, session) => {
+        currentUser = session?.user || null;
 
-      if (!currentUser) {
-        currentProfile = null;
-        currentRole = "user";
-        renderAuth();
-      } else {
-        setTimeout(loadApplication, 0);
-      }
-    });
+        if (!currentUser) {
+          currentProfile = null;
+          currentRole = "user";
+          renderAuth();
+        } else {
+          setTimeout(loadApplication, 0);
+        }
+      });
+    }
   }
 
   window.initializeIdentityApp = initializeApp;
