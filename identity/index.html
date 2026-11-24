@@ -1,710 +1,283 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#101722">
-  <meta name="description" content="Create and manage your personal basketball playbook.">
+  <meta name="description" content="Create, save and share your basketball plays with Identity Playbook.">
   <title>Identity Playbook</title>
 
   <!-- Basketball favicon -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%23192333'/%3E%3Ccircle cx='50' cy='50' r='34' fill='%23ff9a52' stroke='%23ffffff' stroke-width='3'/%3E%3Cpath d='M16 50h68M50 16v68M26 26c17 15 31 33 48 48M74 26C57 41 43 59 26 74' fill='none' stroke='%23101722' stroke-width='3.5'/%3E%3C/svg%3E">
 
+  <!-- Apply the saved theme before first paint (no flash) -->
+  <script>
+    try {
+      document.documentElement.dataset.theme =
+        localStorage.getItem("identityTheme") === "light" ? "light" : "dark";
+    } catch (e) { document.documentElement.dataset.theme = "dark"; }
+  </script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Inter:wght@400;500;600;700;800&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
-
-  <style>
-    :root {
-      color-scheme: dark;
-      --bg: #101722;
-      --panel: #192333;
-      --text: #f5f7fb;
-      --muted: #bac5d5;
-      --accent: #ff9a52;
-      --accent-hover: #ffb17a;
-      --border: #354357;
-      --focus: #ffd0ad;
-    }
-
-    * { box-sizing: border-box; }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background:
-        radial-gradient(ellipse at 15% 0%, rgba(255,154,82,.10), transparent 34rem),
-        var(--bg);
-      color: var(--text);
-      font-family: "Inter", sans-serif;
-      line-height: 1.6;
-    }
-
-    button, input, select, textarea {
-      font: inherit;
-    }
-
-    a { color: var(--accent-hover); }
-
-    .skip-link {
-      position: absolute;
-      left: 12px;
-      top: -60px;
-      z-index: 10;
-      padding: 10px 14px;
-      border-radius: 8px;
-      background: var(--accent);
-      color: #20150e;
-      font-weight: 800;
-    }
-
-    .skip-link:focus { top: 12px; }
-
-    header {
-      min-height: 76px;
-      padding: 18px 6%;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
-      background: rgba(16, 23, 34, .86);
-    }
-
-    .brand {
-      font-family: "Poppins", sans-serif;
-      font-size: 20px;
-      line-height: 1.2;
-      font-weight: 800;
-      letter-spacing: .4px;
-    }
-
-    .brand span { color: var(--accent); }
-
-    .tag {
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-    }
-
-    main {
-      width: min(1120px, 90%);
-      margin: 54px auto;
-      display: grid;
-      grid-template-columns: 1.08fr .92fr;
-      gap: 42px;
-      align-items: center;
-    }
-
-    .eyebrow {
-      color: var(--accent);
-      text-transform: uppercase;
-      font-weight: 800;
-      letter-spacing: 2px;
-      font-size: 12px;
-    }
-
-    h1 {
-      font-family: "Poppins", sans-serif;
-      font-size: clamp(38px, 6vw, 64px);
-      line-height: 1.12;
-      margin: 16px 0;
-    }
-
-    h1 span {
-      color: var(--accent);
-      font-family: "Great Vibes", cursive;
-      font-weight: 400;
-      font-size: 1.3em;
-      letter-spacing: 0;
-      display: inline-block;
-    }
-
-    .intro {
-      color: var(--muted);
-      line-height: 1.8;
-      max-width: 490px;
-    }
-
-    .features {
-      display: grid;
-      gap: 12px;
-      margin-top: 28px;
-    }
-
-    .feature {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 17px;
-    }
-
-    .feature strong {
-      display: block;
-      margin-bottom: 5px;
-    }
-
-    .feature small {
-      color: var(--muted);
-      line-height: 1.6;
-    }
-
-    .auth-card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 30px;
-      box-shadow: 0 18px 60px #0003;
-    }
-
-    /* Fixed sign-in panel: visible on the landing page only */
-    .auth-card {
-      position: fixed;
-      z-index: 50;
-      left: 50%;
-      bottom: 16px;
-      transform: translateX(-50%);
-      width: min(620px, calc(100% - 28px));
-      max-height: min(72vh, 590px);
-      overflow-y: auto;
-      padding: 20px 24px;
-      border-color: rgba(255,154,82,.42);
-      background: rgba(25,35,51,.97);
-      box-shadow: 0 18px 65px rgba(0,0,0,.48), 0 0 0 1px rgba(255,154,82,.06);
-      backdrop-filter: blur(16px);
-    }
-
-    body.ip-auth main { padding-bottom: 500px; }
-    body.ip-auth footer { padding-bottom: 18px; }
-    body:not(.ip-auth) main,
-    body:not(.ip-auth) footer { display: none; }
-
-    .auth-card h2 { margin-top: 0; }
-
-    .auth-card p {
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    label {
-      display: block;
-      font-size: 14px;
-      margin: 18px 0 7px;
-    }
-
-    input {
-      width: 100%;
-      min-height: 46px;
-      padding: 13px;
-      border: 1px solid var(--border);
-      background: #111925;
-      color: var(--text);
-      border-radius: 9px;
-      font-size: 16px;
-    }
-
-    button {
-      width: 100%;
-      min-height: 46px;
-      margin-top: 15px;
-      padding: 13px;
-      border: 0;
-      border-radius: 9px;
-      background: var(--accent);
-      color: #20150e;
-      font-weight: 800;
-      font-size: 15px;
-      cursor: pointer;
-    }
-
-    button.secondary {
-      background: transparent;
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-
-    button:disabled {
-      opacity: .6;
-      cursor: not-allowed;
-    }
-
-    button:focus-visible,
-    input:focus-visible {
-      outline: 3px solid var(--focus);
-      outline-offset: 3px;
-    }
-
-    #message {
-      min-height: 20px;
-      overflow-wrap: anywhere;
-      padding: 0;
-      border-radius: 8px;
-    }
-
-    #message.ip-hidden { display: none; }
-    #message.error {
-      padding: 10px 12px;
-      color: #ffd1d1;
-      background: rgba(180, 45, 45, .16);
-      border: 1px solid rgba(255, 100, 100, .35);
-    }
-    #message.success {
-      padding: 10px 12px;
-      color: #c8f7d4;
-      background: rgba(45, 150, 85, .14);
-      border: 1px solid rgba(90, 210, 130, .3);
-    }
-
-    .switch {
-      text-align: center;
-      margin-top: 18px;
-      font-size: 13px;
-    }
-
-    .switch button {
-      width: auto;
-      min-height: 0;
-      margin: 0;
-      padding: 4px 2px;
-      color: var(--accent);
-      background: transparent;
-      text-decoration: underline;
-      text-underline-offset: 3px;
-    }
-
-    footer {
-      padding: 20px;
-      text-align: center;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .privacy-link {
-      display: inline-block;
-      width: auto;
-      min-height: 0;
-      margin: 8px 0 0;
-      padding: 5px 10px;
-      background: transparent;
-      color: var(--accent-hover);
-      border: 1px solid var(--border);
-      border-radius: 7px;
-      font-size: 12px;
-      cursor: pointer;
-    }
-
-    #privacyDialog {
-      width: min(650px, 92%);
-      max-height: 85vh;
-      padding: 0;
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      background: var(--panel);
-      color: var(--text);
-      box-shadow: 0 20px 80px #0009;
-    }
-
-    #privacyDialog::backdrop {
-      background: rgba(0, 0, 0, .82);
-      backdrop-filter: blur(5px);
-    }
-
-    .privacy-content {
-      padding: 25px;
-    }
-
-    .privacy-content h2 {
-      margin-top: 0;
-      color: var(--accent);
-    }
-
-    .privacy-scroll {
-      max-height: 48vh;
-      overflow-y: auto;
-      padding: 15px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: #111925;
-      line-height: 1.7;
-      overscroll-behavior: contain;
-    }
-
-    .privacy-scroll h3 {
-      color: var(--accent-hover);
-      margin-top: 20px;
-    }
-
-    .privacy-scroll p,
-    .privacy-scroll li {
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    .privacy-accept {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      margin-top: 18px;
-      font-size: 13px;
-      color: var(--text);
-    }
-
-    .privacy-accept input {
-      width: 18px;
-      min-height: 18px;
-      margin-top: 3px;
-      flex-shrink: 0;
-      accent-color: var(--accent);
-    }
-
-    .privacy-content button {
-      margin-top: 12px;
-    }
-
-    .privacy-content button:disabled {
-      opacity: .4;
-      cursor: not-allowed;
-    }
-
-    .privacy-note {
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 12px;
-    }
-
-    @media (max-width: 760px) {
-      .auth-card {
-        bottom: 8px;
-        width: calc(100% - 16px);
-        max-height: 78vh;
-        padding: 16px;
-        border-radius: 15px;
-      }
-      body.ip-auth main { padding-bottom: 620px; }
-
-      main {
-        grid-template-columns: 1fr;
-        margin: 35px auto;
-        gap: 28px;
-      }
-
-      header { padding: 18px 5%; }
-
-      .auth-card { padding: 22px; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        scroll-behavior: auto !important;
-        animation-duration: .01ms !important;
-        transition-duration: .01ms !important;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 
-<body>
+<body class="ip-boot">
 
-  <a class="skip-link" href="#mainHeading">Skip to main content</a>
+  <a class="skip-link" href="#mainContent">Skip to main content</a>
 
-  <header>
-    <div class="brand">IDENTITY<span>.</span> PLAYBOOK</div>
-    <div class="tag">YOUR GAME. YOUR IDENTITY.</div>
+  <header class="topbar">
+    <a class="brand-link" href="./" aria-label="Identity Playbook home">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round">
+          <circle cx="50" cy="50" r="38"/><path d="M12 50h76M50 12v76M24 24c18 16 34 36 52 52M76 24C58 40 42 60 24 76"/>
+        </svg>
+      </span>
+      <span class="brand-text">
+        <span class="brand">IDENTITY<span>.</span> PLAYBOOK</span>
+        <span class="brand-sub">BASKETBALL PLAY COMMUNITY</span>
+      </span>
+    </a>
+
+    <nav id="appNav" class="app-nav" aria-label="Main navigation"></nav>
+
+    <div class="top-actions">
+      <button id="themeToggle" class="icon-btn" type="button" aria-label="Switch to light mode">☀️</button>
+      <span id="userChip"></span>
+      <button id="headerAuthButton" class="btn sm" type="button">Sign in</button>
+    </div>
   </header>
 
-  <main>
+  <div id="mainContent" tabindex="-1">
 
-    <section aria-labelledby="mainHeading">
-      <div class="eyebrow">Built for basketball players</div>
+    <!-- ===================== Signed-out landing ===================== -->
+    <main id="landing" class="landing">
+      <section aria-labelledby="mainHeading">
+        <div class="eyebrow">Built for basketball players &amp; coaches</div>
 
-      <h1 id="mainHeading">
-        Build your game.<br>
-        Own your <span>identity.</span>
-      </h1>
+        <h1 id="mainHeading">
+          Build your game.<br>
+          Own your <span>identity.</span>
+        </h1>
 
-      <p class="intro">
-        Create your personal basketball playbook. Save your offensive
-        and defensive plays, organize your ideas, and build your game
-        one possession at a time.
-      </p>
+        <p class="intro">
+          Create your personal basketball playbook. Draw plays on a court,
+          save your offensive and defensive ideas, and share the ones you
+          are proud of with the community.
+        </p>
 
-      <div class="features">
+        <div class="features">
+          <div class="feature">
+            <strong>🏀 Your Playbook</strong>
+            <small>Draw plays, add notes and attachments, and keep everything organized.</small>
+          </div>
+          <div class="feature">
+            <strong>🌐 The Homeboard</strong>
+            <small>Browse public plays from other players, search by title, creator or #tag.</small>
+          </div>
+          <div class="feature">
+            <strong>🔒 Your Data</strong>
+            <small>Download everything you have saved, or delete it all in one click.</small>
+          </div>
+        </div>
+      </section>
 
-        <div class="feature">
-          <strong>🏀 Your Playbook</strong>
-          <small>Keep your basketball plays organized in one place.</small>
+      <section class="auth-card" aria-labelledby="formTitle">
+        <h2 id="formTitle">Welcome back</h2>
+        <p id="formSubtitle" class="muted">Sign in to get back to your playbook.</p>
+
+        <form id="authForm" novalidate>
+          <div class="field">
+            <label for="email">Email address</label>
+            <input id="email" name="email" type="email" autocomplete="email"
+                   placeholder="you@example.com" required>
+          </div>
+
+          <div class="field">
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" minlength="8"
+                   autocomplete="current-password" placeholder="At least 8 characters"
+                   aria-describedby="passwordRules" required>
+            <div id="passwordRules" class="hint" hidden>
+              Use 8+ characters with uppercase, lowercase, and a number.
+            </div>
+          </div>
+
+          <button id="submitButton" class="btn block" type="submit">Sign in</button>
+        </form>
+
+        <button id="githubButton" class="btn ghost block" type="button">Continue with GitHub</button>
+
+        <p class="hint" style="margin-top:12px">
+          GitHub opens a secure sign-in page. First-time users choose a username
+          before entering the playbook.
+        </p>
+
+        <div class="switch">
+          <span id="switchText">New to Identity?</span>
+          <button id="switchButton" class="link-btn" type="button">Create account</button>
         </div>
 
-        <div class="feature">
-          <strong>🔒 Your Account</strong>
-          <small>Sign in to access your saved plays and files.</small>
-        </div>
+        <p id="message" role="status" aria-live="polite"></p>
+      </section>
+    </main>
 
-        <div class="feature">
-          <strong>📋 Your Identity</strong>
-          <small>Choose a username and build your personal player space.</small>
-        </div>
+    <!-- ===================== Signed-in app ===================== -->
+    <div id="identityAppRoot">
+      <div class="loading" role="status"><span class="spinner" aria-hidden="true"></span> Loading your playbook…</div>
+    </div>
 
+    <noscript>
+      <div class="card" style="max-width:560px;margin:40px auto">
+        <h2>JavaScript is required</h2>
+        <p class="muted">Identity Playbook needs JavaScript to run. Please enable it and reload the page.</p>
       </div>
-    </section>
+    </noscript>
+  </div>
 
-    <section class="auth-card" aria-labelledby="formTitle">
-
-      <h2 id="formTitle">Welcome back</h2>
-
-      <p id="formSubtitle">
-        Sign in to get back to your playbook.
-      </p>
-
-      <form id="authForm">
-
-        <div id="usernameField" hidden>
-          <label for="username">Choose a username</label>
-
-          <input
-            id="username"
-            name="username"
-            minlength="3"
-            maxlength="20"
-            pattern="[A-Za-z0-9_]+"
-            autocomplete="username"
-            placeholder="YourPlayerName"
-          >
-        </div>
-
-        <label for="email">Email address</label>
-
-        <input
-          id="email"
-          name="email"
-          type="email"
-          autocomplete="email"
-          placeholder="you@example.com"
-          required
-        >
-
-        <label for="password">Password</label>
-
-        <input
-          id="password"
-          name="password"
-          type="password"
-          minlength="8"
-          autocomplete="current-password"
-          placeholder="At least 8 characters"
-          required
-        >
-        <small id="passwordRules" class="tag" hidden>
-          Use 8+ characters with uppercase, lowercase, and a number.
-        </small>
-
-        <button id="submitButton" type="submit">
-          Sign in
-        </button>
-
-      </form>
-
-      <button id="githubButton" class="secondary" type="button">
-        Continue with GitHub
-      </button>
-
-      <p class="tag">
-        GitHub opens a secure sign-in page. First-time users choose
-        a username before entering the playbook. Returning users
-        go to their dashboard.
-      </p>
-
-      <div class="switch">
-        <span id="switchText">New to Identity?</span>
-        <button id="switchButton" type="button">
-          Create account
-        </button>
-      </div>
-
-      <p id="message" role="status" aria-live="polite"></p>
-
-    </section>
-
-  </main>
-
-  <footer>
+  <footer class="site-footer">
     IDENTITY. PLAYBOOK · Made for the love of the game
     <br>
-    <button id="openPrivacyButton" class="privacy-link" type="button">
-      Privacy Policy
-    </button>
+    <button id="openPrivacyButton" class="privacy-link" type="button">Privacy Policy</button>
   </footer>
 
+  <!-- Bottom "now viewing" bar (filled by app.js) -->
+  <div id="ipDock" class="dock" role="region" aria-label="Selected play" hidden></div>
+
+  <!-- Toast notifications -->
+  <div id="toastRegion" class="toast-region" role="status" aria-live="polite" aria-atomic="false"></div>
+
+  <!-- Dialogs filled by app.js -->
+  <dialog id="confirmDialog" aria-labelledby="confirmTitle"></dialog>
+  <dialog id="viewDialog" class="wide" aria-labelledby="viewTitle"></dialog>
+  <dialog id="reportDialog" aria-labelledby="reportTitle"></dialog>
+
+  <!-- ===================== Privacy policy ===================== -->
   <dialog id="privacyDialog" aria-labelledby="privacyTitle">
-    <div class="privacy-content">
+    <div class="dialog-body">
 
       <h2 id="privacyTitle">IDENTITY. Privacy Policy</h2>
 
-      <p>
-        Please read this policy before using Identity Playbook.
-        It explains what information the app handles and how it is used.
+      <p class="muted">
+        Please read this policy before using Identity Playbook. It explains what is
+        stored, who can see it, and how to download or delete it.
       </p>
 
-      <div id="privacyScroll" class="privacy-scroll">
+      <div id="privacyScroll" class="privacy-scroll" tabindex="0" aria-label="Privacy policy text">
 
-        <p><strong>Last updated:</strong> November 15, 2026</p>
+        <p><strong>Last updated:</strong> November 23, 2026</p>
 
         <h3>1. About Identity Playbook</h3>
         <p>
-          Identity Playbook is a basketball playbook application.
-          It allows users to create, save, organize, and manage
-          basketball plays and upload related files.
+          Identity Playbook is a basketball playbook community. You can draw and save
+          plays, attach images or PDFs, and choose to share plays with other signed-in users.
         </p>
 
-        <h3>2. Information associated with your account</h3>
-        <p>
-          When you create an account or sign in, the app uses
-          account information such as your email address, account
-          identifier, and chosen username.
-        </p>
-        <p>
-          You can sign in using email and password or GitHub.
-          Authentication is handled through Supabase and, when
-          applicable, GitHub's sign-in service. Your password is
-          handled by Supabase Authentication rather than being
-          stored in the playbook tables by this app.
-        </p>
+        <h3>2. What we store about you</h3>
+        <ul>
+          <li><strong>Account:</strong> your email address and a random account ID. Sign-in is handled by Supabase Authentication (and GitHub if you choose it). Your password is never stored by this app's own tables.</li>
+          <li><strong>Profile:</strong> your chosen username and your light/dark theme preference.</li>
+          <li><strong>Plays:</strong> title, type, description, court diagram, visibility (public or private) and timestamps.</li>
+          <li><strong>Files:</strong> images (JPG, PNG, WEBP, GIF) and PDFs up to 10 MB each, with an optional description for accessibility.</li>
+          <li><strong>Reports and appeals:</strong> anything you write when you report a play or appeal a restriction.</li>
+          <li><strong>Moderation records:</strong> if staff act on your content or account (for example hiding a play or suspending an account), the action, reason, date and the staff member responsible are recorded.</li>
+        </ul>
 
-        <h3>3. Your basketball plays</h3>
-        <p>
-          When you create or edit a play, the app saves information
-          such as its name, type, description, court diagram, and
-          related timestamps.
-        </p>
-        <p>
-          This information is stored in the app's Supabase database
-          and is associated with your account.
-        </p>
+        <h3>3. Who can see what</h3>
+        <ul>
+          <li><strong>Only you</strong> can see your private plays, your private files, your reports and your appeals.</li>
+          <li><strong>Other signed-in users</strong> can see plays you mark <em>Public</em> (with your username and any attached files). Signed-out visitors cannot see plays.</li>
+          <li><strong>Moderators</strong> can read any play or file when reviewing a report, hide or restore plays, review reports, and suspend accounts temporarily. They can request a permanent block.</li>
+          <li><strong>Administrators</strong> can do everything moderators can, plus permanently remove plays and files, block or unblock accounts, review appeals, manage moderators, and read the moderation history.</li>
+          <li>These permissions are enforced by the database itself (Row Level Security and secured functions), not only by the buttons you see on screen.</li>
+          <li>Staff accounts show a <strong>MOD</strong> or <strong>ADMIN</strong> badge. Usernames that imitate staff are reserved.</li>
+        </ul>
 
-        <h3>4. Uploaded files</h3>
+        <h3>4. Reporting and moderation</h3>
         <p>
-          The app allows you to upload PDF files and images in JPG,
-          JPEG, PNG, GIF, or WEBP format. Each file must be no larger
-          than 10 MB.
-        </p>
-        <p>
-          Uploaded files are stored in the Supabase Storage bucket
-          named identity-playbook-files, under a folder associated
-          with your account.
-        </p>
-        <p>
-          Access to files depends on the Supabase Storage security
-          policies configured for this project. Do not upload
-          sensitive or confidential documents.
+          Signed-in users can report a public play and must explain the problem. Reports are visible to
+          you and to staff. Hidden plays and their files are no longer visible to other users but remain
+          visible to you and to staff until an administrator permanently removes them. Moderation records
+          are kept so that decisions can be reviewed and appealed.
         </p>
 
         <h3>5. How your information is used</h3>
-        <p>Your information is used to:</p>
         <ul>
-          <li>Create and manage your account.</li>
-          <li>Display your username and personal playbook.</li>
-          <li>Save and retrieve your basketball plays.</li>
-          <li>Upload, download, and delete your files.</li>
-          <li>Maintain your sign-in session.</li>
+          <li>To create and secure your account and keep you signed in.</li>
+          <li>To display your username, plays and files as you have chosen.</li>
+          <li>To keep the community safe through reports, moderation and appeals.</li>
         </ul>
 
         <h3>6. Services that process information</h3>
         <p>
-          Identity Playbook uses Supabase for authentication,
-          database storage, and file storage. GitHub may process
-          information when you choose GitHub sign-in.
-        </p>
-        <p>
-          These services operate under their own privacy policies
-          and terms. Their handling of information is also subject
-          to their own settings and practices.
+          Identity Playbook uses Supabase for authentication, database and file storage, and GitHub when you
+          choose GitHub sign-in. Fonts are loaded from Google Fonts. These services have their own privacy
+          policies. This app does not request your contacts, camera, microphone or precise location.
         </p>
 
-        <h3>7. Information this app does not directly request</h3>
+        <h3>7. Data stored in your browser</h3>
         <p>
-          The current app code does not request access to your
-          contacts, camera, microphone, or precise location.
-          This does not mean that the hosting or authentication
-          services collect no technical information.
+          Your browser stores a few small settings: that you accepted this policy, your theme choice, which
+          announcement you dismissed, and your sign-in session. Your theme is also saved to your profile so it
+          follows you across devices.
         </p>
 
-        <h3>8. Account security and privacy</h3>
+        <h3>8. Download your data</h3>
         <p>
-          Your account is intended to access its own saved plays
-          and files. Supabase Row Level Security and Storage
-          policies are important parts of protecting that data.
-        </p>
-        <p>
-          No online service can guarantee absolute security.
-          Keep your sign-in details private and avoid uploading
-          information you would not want stored online.
+          In <strong>Account → Export my data</strong> you can download a JSON file with your account, profile,
+          plays, file details, reports you sent, restrictions and appeals.
         </p>
 
-        <h3>9. Your choices and deleting information</h3>
+        <h3>9. Deleting your content and your data</h3>
+        <ul>
+          <li><strong>Delete individual items:</strong> you can delete any play or file at any time. You will be asked to confirm first.</li>
+          <li><strong>Delete My Data:</strong> in <strong>Account</strong> you can delete your whole account. This immediately removes your sign-in account, profile, username, plays, attachments, uploaded files and appeals.</li>
+          <li><strong>What remains:</strong> reports you filed are kept without your identity so moderators can finish reviewing them. Moderation records and restrictions are kept using only your random account ID (no email or username) so that bans and past decisions stay accurate.</li>
+          <li><strong>Backups:</strong> our hosting provider may keep encrypted backups for a limited time before they expire.</li>
+        </ul>
+
+        <h3>10. Security</h3>
         <p>
-          You can sign out, edit or delete saved plays, and delete
-          uploaded files using the available app features.
-          Deleting a play or file does not automatically delete
-          your entire account.
-        </p>
-        <p>
-          The current app does not provide a complete account
-          deletion feature. Account deletion and any associated
-          data removal may require assistance from the app
-          administrator.
+          Files are stored in a private bucket with access rules, and each account can only change its own
+          content. No online service can promise absolute security, so please do not upload sensitive or
+          confidential documents.
         </p>
 
-        <h3>10. Changes to this policy</h3>
+        <h3>11. Changes to this policy</h3>
         <p>
-          This policy may be updated when the app's features or
-          data practices change. If an updated policy requires
-          acceptance, you may be asked to read and accept it again.
+          If this policy changes in a meaningful way you will be asked to read and accept it again.
         </p>
 
-        <h3>11. Contact</h3>
+        <h3>12. Contact</h3>
         <p>
-          If you have questions about this policy or how your
-          information is handled, contact the person or organization
-          responsible for operating Identity Playbook.
+          Questions about this policy or your data? Contact the person or organization responsible for operating
+          Identity Playbook.
         </p>
 
         <p>
           <strong>
-            By accepting, you confirm that you have read this
-            Privacy Policy and understand how the app handles
+            By accepting, you confirm that you have read this Privacy Policy and understand how the app handles
             the information described above.
           </strong>
         </p>
-
       </div>
 
       <label class="privacy-accept">
         <input id="privacyCheckbox" type="checkbox" disabled>
-        <span>
-          I have read and understood the Privacy Policy.
-        </span>
+        <span>I have read and understood the Privacy Policy.</span>
       </label>
 
-      <button id="acceptPrivacyButton" type="button" disabled>
-        Accept & Continue
-      </button>
-
-      <button id="declinePrivacyButton" class="secondary" type="button">
-        Decline
-      </button>
-
-      <button id="closePrivacyButton" class="secondary" type="button" hidden>
-        Close
-      </button>
+      <div class="dialog-actions">
+        <button id="declinePrivacyButton" class="btn secondary" type="button">Decline</button>
+        <button id="closePrivacyButton" class="btn secondary" type="button" hidden>Close</button>
+        <button id="acceptPrivacyButton" class="btn" type="button" disabled>Accept &amp; Continue</button>
+      </div>
 
       <p id="privacyMessage" class="privacy-note" role="status">
         Scroll to the bottom of the policy to enable acceptance.
       </p>
-
     </div>
   </dialog>
 
@@ -714,12 +287,11 @@
   <script src="court-designer.js"></script>
   <script src="app.js"></script>
 
-  <!-- Privacy Policy functionality -->
+  <!-- Privacy Policy gate -->
   <script>
     (() => {
-      // Change this version whenever the policy is meaningfully updated.
-      // For example: v1 -> v2. Previous acceptance will then be invalid.
-      const POLICY_VERSION = "v1";
+      // app.js sets window.IDENTITY_POLICY_VERSION. Bumping it (v2 -> v3) asks everyone to accept again.
+      const POLICY_VERSION = window.IDENTITY_POLICY_VERSION || "v2";
       const STORAGE_KEY = "identityPrivacyAccepted";
 
       const dialog = document.getElementById("privacyDialog");
@@ -732,115 +304,78 @@
       const privacyMessage = document.getElementById("privacyMessage");
 
       function hasAccepted() {
-        try {
-          return localStorage.getItem(STORAGE_KEY) === POLICY_VERSION;
-        } catch {
-          return false;
-        }
+        try { return localStorage.getItem(STORAGE_KEY) === POLICY_VERSION; }
+        catch { return false; }
       }
 
       function updateScrollStatus() {
         const reachedBottom =
-          scrollArea.scrollTop + scrollArea.clientHeight >=
-          scrollArea.scrollHeight - 5;
-
+          scrollArea.scrollTop + scrollArea.clientHeight >= scrollArea.scrollHeight - 5;
         if (reachedBottom || hasAccepted()) {
           checkbox.disabled = false;
-
           if (!hasAccepted()) {
-            privacyMessage.textContent =
-              "You've reached the end. Check the box to continue.";
+            privacyMessage.textContent = "You've reached the end. Check the box to continue.";
           }
         }
       }
 
       function openPolicy() {
         const accepted = hasAccepted();
-
         checkbox.checked = accepted;
         checkbox.disabled = !accepted;
         acceptButton.hidden = accepted;
         acceptButton.disabled = true;
         closeButton.hidden = !accepted;
         declineButton.hidden = false;
-
         scrollArea.scrollTop = 0;
 
-        if (!accepted) {
-          privacyMessage.textContent =
-            "Scroll to the bottom of the policy to enable acceptance.";
-        } else {
-          privacyMessage.textContent =
-            "You have already accepted this policy. You can close it or decline below.";
-        }
+        privacyMessage.textContent = accepted
+          ? "You have already accepted this policy. You can close it, or decline to withdraw your acceptance."
+          : "Scroll to the bottom of the policy to enable acceptance.";
 
-        if (!dialog.open) {
-          dialog.showModal();
-        }
-
+        if (!dialog.open) dialog.showModal();
         updateScrollStatus();
       }
+      window.openIdentityPrivacy = openPolicy;
 
       scrollArea.addEventListener("scroll", updateScrollStatus);
-
-      checkbox.addEventListener("change", () => {
-        acceptButton.disabled = !checkbox.checked;
-      });
+      checkbox.addEventListener("change", () => { acceptButton.disabled = !checkbox.checked; });
 
       acceptButton.addEventListener("click", () => {
         if (!checkbox.checked || checkbox.disabled) return;
-
-        try {
-          localStorage.setItem(STORAGE_KEY, POLICY_VERSION);
-        } catch {
-          privacyMessage.textContent =
-            "Your browser could not save acceptance. Please enable browser storage and try again.";
+        try { localStorage.setItem(STORAGE_KEY, POLICY_VERSION); }
+        catch {
+          privacyMessage.textContent = "Your browser could not save acceptance. Please enable browser storage and try again.";
           return;
         }
-
         dialog.close();
-
-        if (typeof window.initializeIdentityApp === "function") {
-          window.initializeIdentityApp();
-        }
+        if (typeof window.initializeIdentityApp === "function") window.initializeIdentityApp();
       });
 
       declineButton.addEventListener("click", () => {
-        try {
-          localStorage.removeItem(STORAGE_KEY);
-        } catch {
-          privacyMessage.textContent =
-            "Your browser could not update your choice. Please check your browser storage settings.";
+        try { localStorage.removeItem(STORAGE_KEY); }
+        catch {
+          privacyMessage.textContent = "Your browser could not update your choice. Please check your browser storage settings.";
           return;
         }
-
         checkbox.checked = false;
         checkbox.disabled = true;
         acceptButton.hidden = false;
         acceptButton.disabled = true;
         closeButton.hidden = true;
-
-        privacyMessage.textContent =
-          "You declined the Privacy Policy. Access to Identity Playbook is blocked. You can review the policy, scroll to the bottom, and accept it if you change your mind.";
-
         scrollArea.scrollTop = 0;
+        privacyMessage.textContent =
+          "You declined the Privacy Policy, so access to Identity Playbook is blocked. You can review the policy and accept it if you change your mind.";
+        if (typeof window.identityOnPolicyDeclined === "function") window.identityOnPolicyDeclined();
       });
 
-      closeButton.addEventListener("click", () => {
-        dialog.close();
-      });
-
+      closeButton.addEventListener("click", () => dialog.close());
       openButton.addEventListener("click", openPolicy);
 
-      dialog.addEventListener("cancel", (event) => {
-        if (!hasAccepted()) {
-          event.preventDefault();
-        }
-      });
+      // While the policy has not been accepted, it cannot be dismissed with Esc.
+      dialog.addEventListener("cancel", event => { if (!hasAccepted()) event.preventDefault(); });
 
-      if (!hasAccepted()) {
-        openPolicy();
-      }
+      if (!hasAccepted()) openPolicy();
     })();
   </script>
 
