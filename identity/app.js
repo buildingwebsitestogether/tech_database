@@ -782,20 +782,45 @@
           by <strong>@${escapeHTML(play.username || "unknown")}</strong> ${roleBadge(play.author_role)}
           · ${escapeHTML(formatDate(play.created_at))}
         </p>
-        <div class="view-court">${courtHTML(play.diagram, `Court diagram for ${play.title}`)}</div>
+        <div class="view-court" id="viewCourt">${courtHTML(play.diagram, `Court diagram for ${play.title}`)}</div>
+        <div id="viewCourtControls"></div>
         <p class="view-desc">${escapeHTML(play.description || "No description.")}</p>
         <div id="viewFiles">${loadingHTML("Loading attachments…")}</div>
         <div class="dialog-actions">
           ${!mine ? `<button type="button" class="btn ghost" id="viewReport">🚩 Report</button>` : ""}
-          ${isStaff && !mine ? `<button type="button" class="btn ghost" id="viewHide">Hide play</button>` : ""}
+          ${isStaff && !mine ? `<button type="button" class="btn ghost" id="viewHide">Hide play</button>
+          <button type="button" class="btn danger" id="viewDelete">Delete play</button>` : ""}
           <button type="button" class="btn secondary" id="viewDownload">⬇ Download</button>
           <button type="button" class="btn" id="viewClose">Close</button>
         </div>
       </div>`;
 
     $("viewClose").onclick = () => dialog.close();
+    if (typeof window.mountCourtPlayer === "function") {
+      try {
+        const courtPlayer = window.mountCourtPlayer($("viewCourt"), play.diagram, {
+          label: `Court diagram for ${play.title}`, controls: $("viewCourtControls")
+        });
+        dialog.addEventListener("close", () => { if (courtPlayer && courtPlayer.destroy) courtPlayer.destroy(); }, { once: true });
+      } catch (error) { console.warn("Animated court viewer:", error); }
+    }
     $("viewDownload").onclick = () => downloadPlay(play);
     if ($("viewReport")) $("viewReport").onclick = () => { dialog.close(); openReportDialog(play); };
+    if ($("viewDelete")) $("viewDelete").onclick = async () => {
+      const ok = await confirmAction({
+        title: "Permanently delete this play?",
+        message: `“${play.title}” and all of its attached files will be deleted for good. This cannot be undone. Hiding it is reversible.`,
+        confirmLabel: "Delete permanently", danger: true, requireText: "DELETE"
+      });
+      if (!ok) return;
+      try {
+        await removePlayFiles(play.id);
+        await callRPC("identity_delete_play", { p_play_id: play.id });
+        showMessage("Play and files removed.", "success");
+        dialog.close();
+        if (currentTab === "home") openTab("home");
+      } catch (error) { showMessage(friendlyError(error), "error"); }
+    };
     if ($("viewHide")) $("viewHide").onclick = async () => {
       const reason = await confirmAction({
         title: "Hide this play?",
@@ -1531,7 +1556,7 @@
         <h2 class="section-title">${isAdmin ? "Administrator dashboard" : "Moderator dashboard"}</h2>
         <p class="muted">
           What you can do here is decided by the database, not by this page.
-          ${isAdmin ? "You have full administrator access." : "Moderators can review reports, hide plays and suspend users. Permanent blocks need an administrator."}
+          ${isAdmin ? "You have full administrator access." : "Moderators can review reports, hide or delete plays and suspend users. Permanent blocks need an administrator."}
         </p>
         <div class="subnav" id="ipStaffNav">
           ${tabs.map(([id, label]) => `<button type="button" class="chip" data-staff="${id}"
@@ -1686,8 +1711,8 @@
           <div class="actions">
             <button type="button" class="btn sm ghost" data-view-play="${escapeHTML(item.play_id)}">View</button>
             <button type="button" class="btn sm secondary" data-restore="${escapeHTML(item.play_id)}">Restore</button>
-            ${isAdmin ? `<button type="button" class="btn sm danger" data-delete-play="${escapeHTML(item.play_id)}"
-              data-title="${escapeHTML(item.title)}">Remove permanently</button>` : ""}
+            <button type="button" class="btn sm danger" data-delete-play="${escapeHTML(item.play_id)}"
+              data-title="${escapeHTML(item.title)}">Remove permanently</button>
           </div>
         </div>`).join("")
         : emptyHTML("🙈", "No hidden plays", "Plays hidden by staff will appear here.")}`;
